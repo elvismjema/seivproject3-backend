@@ -18,6 +18,7 @@ exports.login = async (req, res) => {
   console.log("=== LOGIN STARTED ===");
 
   var googleToken = req.body.credential;
+  var pendingRole = req.body.role; // Get the role from the request
 
   const client = new OAuth2Client(google_id);
   async function verify() {
@@ -82,15 +83,28 @@ exports.login = async (req, res) => {
 
     if (data != null) {
       user = data.dataValues;
-      console.log("Step 2: Found existing user:", user.id);
+      console.log("Step 2: Found existing user:", user.id, "with role:", user.role);
     } else {
       // create a new User and save to database
+      // Use the role from the request if provided, otherwise default
+      const userCount = await User.count();
+      let defaultRole = 'athlete';
+
+      if (userCount === 0) {
+        // First user is always admin
+        defaultRole = 'admin';
+      } else if (pendingRole && ['athlete', 'coach'].includes(pendingRole)) {
+        // Use the role selected during registration
+        defaultRole = pendingRole;
+      }
+
       user = {
         fName: firstName,
         lName: lastName,
         email: email,
+        role: defaultRole,
       };
-      console.log("Step 2: User not found, will create new user");
+      console.log("Step 2: User not found, will create new user with role:", defaultRole);
     }
   } catch (err) {
     console.error("ERROR finding user:", err);
@@ -161,6 +175,7 @@ exports.login = async (req, res) => {
           fName: user.fName,
           lName: user.lName,
           userId: user.id,
+          role: user.role,
           token: session.token,
         };
         console.log("found a session, don't need to make another one");
@@ -199,6 +214,7 @@ exports.login = async (req, res) => {
           fName: user.fName,
           lName: user.lName,
           userId: user.id,
+          role: user.role,
           token: token,
           // refresh_token: user.refresh_token,
           // expiration_date: user.expiration_date

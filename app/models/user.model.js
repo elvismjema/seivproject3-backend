@@ -2,7 +2,7 @@ import Sequelize from "sequelize";
 import SequelizeInstance from "../config/sequelizeInstance.js";
 
 const User = SequelizeInstance.define("user", {
-  
+
   id: {
     type: Sequelize.INTEGER,
     autoIncrement: true,
@@ -19,15 +19,17 @@ const User = SequelizeInstance.define("user", {
   email: {
     type: Sequelize.STRING,
     allowNull: false,
+    unique: true,
   },
-  // refresh_token: {
-  //   type: Sequelize.STRING(512),
-  //   allowNull: true
-  // },
-  // expiration_date: {
-  //   type: Sequelize.DATE,
-  //   allowNull: true
-  // },
+  role: {
+    type: Sequelize.ENUM('admin', 'coach', 'athlete'),
+    allowNull: false,
+    defaultValue: 'athlete',
+  },
+  profileImage: {
+    type: Sequelize.STRING(500),
+    allowNull: true,
+  },
 });
 
 export default User;

@@ -147,5 +147,78 @@ exports.delete = (req, res) => {
     });
 };
 
+// Get admin statistics
+exports.getAdminStats = async (req, res) => {
+  try {
+    const totalUsers = await User.count();
+    const totalCoaches = await User.count({ where: { role: 'coach' } });
+    const totalAthletes = await User.count({ where: { role: 'athlete' } });
+
+    // For now, return 0 for exercises (will be implemented with Exercise model)
+    const totalExercises = 0;
+
+    res.send({
+      totalUsers,
+      totalExercises,
+      totalCoaches,
+      totalAthletes
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: err.message || "Some error occurred while retrieving statistics.",
+    });
+  }
+};
+
+// Get all users for admin management
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'fName', 'lName', 'email', 'role'],
+      order: [['createdAt', 'DESC']]
+    });
+    res.send(users);
+  } catch (err) {
+    res.status(500).send({
+      message: err.message || "Some error occurred while retrieving users.",
+    });
+  }
+};
+
+// Update user role
+exports.updateRole = async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body;
+
+  // Validate role
+  const validRoles = ['admin', 'coach', 'athlete'];
+  if (!role || !validRoles.includes(role)) {
+    return res.status(400).send({
+      message: "Invalid role. Must be 'admin', 'coach', or 'athlete'.",
+    });
+  }
+
+  try {
+    const [num] = await User.update(
+      { role },
+      { where: { id: id } }
+    );
+
+    if (num == 1) {
+      res.send({
+        message: "User role was updated successfully.",
+      });
+    } else {
+      res.status(404).send({
+        message: `Cannot update User with id=${id}. Maybe User was not found!`,
+      });
+    }
+  } catch (err) {
+    res.status(500).send({
+      message: "Error updating User role with id=" + id,
+    });
+  }
+};
+
 
 export default exports;
