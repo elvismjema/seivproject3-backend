@@ -1,11 +1,12 @@
 
 import routes from "./app/routes/index.js";
-import express, { json, urlencoded } from "express"
+import express from "express";
 import cors from "cors";
+import db from "./app/models/index.js";
 
-import db  from "./app/models/index.js";
-
-db.sequelize.sync();
+// Use alter: true to update existing tables with new fields
+// Change to sync({ force: false }) in production
+db.sequelize.sync({ alter: true });
 
 const app = express();
 
