@@ -68,3 +68,18 @@ npm run start
 ```
 npm run test
 ```
+
+## Troubleshooting
+
+### Common Authentication Issues
+
+1. **Google accounts without last names** - The auth controller now handles this by defaulting to an empty string if no family_name is provided.
+
+2. **Session expiration issues** - Fixed with proper date comparison to ensure expired sessions are cleared correctly.
+
+3. **Database connection on macOS with XAMPP** - If you encounter connection issues, you may need to specify the socket path in your db.config.js:
+```javascript
+dialectOptions: {
+  socketPath: '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock'
+}
+```
