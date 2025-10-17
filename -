@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Author" content="David North">
+  <meta name="LastAuthor" content="David North">
+  <meta name="CreationTime" content="2025-09-24T12:52:00Z">
+  <meta name="ModificationTime" content="2025-09-24T12:52:00Z">
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2299.77">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; text-align: center; font: 16.0px Times}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times}
+    p.p3 {margin: 0.0px 0.0px 0.0px 54.0px; font: 9.0px Menlo; color: #001080}
+    p.p4 {margin: 0.0px 0.0px 0.0px 54.0px; font: 9.0px Menlo; color: #3b3b3b}
+    p.p5 {margin: 0.0px 0.0px 0.0px 54.0px; font: 9.0px Menlo; color: #a31515}
+    p.p6 {margin: 0.0px 0.0px 0.0px 54.0px; font: 9.0px Menlo; color: #3b3b3b; min-height: 10.0px}
+    p.p7 {margin: 0.0px 0.0px 0.0px 36.0px; font: 9.0px Menlo; color: #3b3b3b}
+    p.p8 {margin: 0.0px 0.0px 0.0px 36.0px; font: 9.0px Menlo; color: #3b3b3b; min-height: 10.0px}
+    p.p9 {margin: 0.0px 0.0px 0.0px 54.0px; font: 12.0px Times; min-height: 14.0px}
+    p.p10 {margin: 0.0px 0.0px 0.0px 18.0px; font: 9.0px Menlo; color: #3b3b3b}
+    p.p11 {margin: 0.0px 0.0px 0.0px 18.0px; font: 9.0px Menlo; color: #001080}
+    p.p12 {margin: 0.0px 0.0px 0.0px 18.0px; font: 9.0px Menlo; color: #a31515}
+    p.p13 {margin: 0.0px 0.0px 0.0px 54.0px; font: 9.0px Menlo; color: #0070c1}
+    p.p14 {margin: 0.0px 0.0px 0.0px 0.0px; font: 9.0px Menlo; color: #a31515}
+    p.p15 {margin: 0.0px 0.0px 0.0px 0.0px; font: 9.0px Menlo; color: #a31515; min-height: 10.0px}
+    p.p16 {margin: 0.0px 0.0px 0.0px 54.0px; font: 12.0px Times}
+    p.p17 {margin: 0.0px 0.0px 0.0px 54.0px; font: 9.0px Menlo; color: #0451a5}
+    li.li2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times}
+    span.s1 {color: #0000ff}
+    span.s2 {color: #3b3b3b}
+    span.s3 {color: #000000}
+    span.s4 {color: #a31515}
+    span.s5 {color: #af00db}
+    span.s6 {color: #001080}
+    span.s7 {color: #0070c1}
+    span.s8 {color: #800000}
+    span.s9 {color: #795e26}
+    span.s10 {color: #0451a5}
+    span.Apple-tab-span {white-space:pre}
+    ul.ul1 {list-style-type: disc}
+  </style>
+</head>
+<body>
+<p class="p1"><b>Using Tutorial Simple as Starting Code</b></p>
+<p class="p2">Changes need if using <b>Tutorial-Frontend-Vue3-Simple</b> as starting code</p>
+<ul class="ul1">
+  <li class="li2">Change the path for backend request.</li>
+</ul>
+<ul class="ul1">
+  <li class="li2">Find src/services/services.js</li>
+  <li class="li2">Update the baseurl for dev and prod.<span class="Apple-converted-space">  </span>Change “tutorial-simple” to a new baseurl for the REST request for the new project.</li>
+</ul>
+<p class="p3"><span class="s1">var</span><span class="s2"> </span>baseurl<span class="s2"> </span><span class="s3">=</span><span class="s2"> </span><span class="s4">""</span><span class="s2">;</span></p>
+<p class="p4"><span class="s5">if</span> (<span class="s5">import</span>.<span class="s6">meta</span>.<span class="s6">env</span>.<span class="s7">DEV</span>) {</p>
+<p class="p5"><span class="s2"><span class="Apple-converted-space">  </span></span><span class="s6">baseurl</span><span class="s2"> </span><span class="s3">=</span><span class="s2"> </span>"http://localhost/tutorial-simple"<span class="s2">;</span></p>
+<p class="p4">} <span class="s5">else</span> {</p>
+<p class="p5"><span class="s2"><span class="Apple-converted-space">  </span></span><span class="s6">baseurl</span><span class="s2"> </span><span class="s3">=</span><span class="s2"> </span>"/tutorial-simple"<span class="s2">;</span></p>
+<p class="p6"><br></p>
+<ul class="ul1">
+  <li class="li2">Add a ProxyPass line in the Apache config file with the new baseurl for the REST requests to the backend.</li>
+  <ul class="ul1">
+    <li class="li2">Find the ProxyPass set of lines in the Apache config file and add a new line replacing tutorial-simple (twice) with the new baseurl.<span class="Apple-converted-space">  </span>Also update 3101 to the port you are using for the backend.</li>
+  </ul>
+</ul>
+<p class="p7">ProxyPass /tutorial-simple http://localhost:3101/tutorial-simple<span class="Apple-converted-space"> </span></p>
+<p class="p8"><br></p>
+<ul class="ul1">
+  <li class="li2">Restart Apache after this change.</li>
+</ul>
+<p class="p9"><br></p>
+<ul class="ul1">
+  <li class="li2">Update the vue-deploy.yml for your deployment.</li>
+</ul>
+<ul class="ul1">
+  <li class="li2">Change the parameters for the Deploy to Server step to match where you are deploying.<span class="Apple-converted-space">  </span>Most like the REMOTE_HOST and TARGET will change.</li>
+</ul>
+<p class="p10"><span class="Apple-converted-space">        </span><span class="s8">env</span>:</p>
+<p class="p11"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">SSH_PRIVATE_KEY</span><span class="s2">: </span><span class="s3">${{ </span>secrets<span class="s3">.</span>SERVER_SSH_KEY<span class="s3"> }}</span></p>
+<p class="p12"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">ARGS</span><span class="s2">: </span>"-rltgoDzvO --delete"</p>
+<p class="p10"><span class="Apple-converted-space">          </span><span class="s8">SOURCE</span>: <span class="s4">"dist/"</span></p>
+<p class="p12"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">REMOTE_HOST</span><span class="s2">: </span>"tutorial.eaglesoftwareteam.com"</p>
+<p class="p10"><span class="Apple-converted-space">          </span><span class="s8">REMOTE_USER</span>: <span class="s1">ubuntu</span></p>
+<p class="p12"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">TARGET</span><span class="s2">: </span>"/var/www/html/tutorial-frontend-vue3-simple"</p>
+<p class="p2"></p>
+<p class="p9"><br></p>
+<ul class="ul1">
+  <li class="li2">Update the vite.config.js</li>
+  <ul class="ul1">
+    <li class="li2">Update the baseURL for the production directory.</li>
+    <li class="li2">Change the “/tutorial-frontend-vue3-simple/” to the directory location in the Apache root for your project.</li>
+  </ul>
+</ul>
+<p class="p13"><span class="s1">const</span><span class="s2"> </span>baseURL<span class="s2"> </span><span class="s3">=</span></p>
+<p class="p5"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s6">process</span><span class="s2">.</span><span class="s6">env</span><span class="s2">.</span><span class="s7">APP_ENV</span><span class="s2"> </span><span class="s3">===</span><span class="s2"> </span>"development"<span class="s2"> </span><span class="s3">?</span><span class="s2"> </span>"/"<span class="s2"> </span><span class="s3">:</span><span class="s2"> </span>"/tutorial-frontend-vue3-simple/"<span class="s2">;</span></p>
+<p class="p6"><br></p>
+<p class="p8"><br></p>
+<p class="p2">Changes need if using <b>Tutorial-Backend-Simple</b> as starting code</p>
+<ul class="ul1">
+  <li class="li2">Update the baseurl</li>
+  <ul class="ul1">
+    <li class="li2">Find app/routes and update all routes files.</li>
+    <li class="li2">In each file find the app.use line and<span class="Apple-converted-space">  </span>replace ‘tutorial-simple’ with the new baseurls</li>
+  </ul>
+</ul>
+<p class="p14"><span class="s6">app</span><span class="s2">.</span><span class="s9">use</span><span class="s2">(</span>'/tutorial-simple/tutorials'<span class="s2">, </span><span class="s6">router</span><span class="s2">);</span></p>
+<ul class="ul1">
+  <li class="li2">Update the port</li>
+  <ul class="ul1">
+    <li class="li2">In the .env file update the port to be the backend port you want to use on your computer.<span class="Apple-converted-space">  </span>Change ‘3101’ to the new port number</li>
+  </ul>
+</ul>
+<p class="p14"><span class="s1">PORT</span><span class="s2">=</span>"3101"</p>
+<p class="p15"><br></p>
+<ul class="ul1">
+  <li class="li2">Update the service file tutorial-backend-simple.service</li>
+  <ul class="ul1">
+    <li class="li2">Update the name of the file to &lt;your project&gt;.service</li>
+    <li class="li2">Update the contents of the file and change the<span class="Apple-converted-space">  </span>project description</li>
+  </ul>
+</ul>
+<p class="p16">Description=NodeJS Tutorial App Simple</p>
+<ul class="ul1">
+  <ul class="ul1">
+    <li class="li2">Update the contents of the file and change the working directory to the directory for your backend code.</li>
+  </ul>
+</ul>
+<p class="p16">WorkingDirectory=/home/ubuntu/nodeapps/tutorial-backend-simple/</p>
+<p class="p9"><br></p>
+<ul class="ul1">
+  <li class="li2">Update the package.json</li>
+  <ul class="ul1">
+    <li class="li2">Update the bundle line.<span class="Apple-converted-space">  </span>Change the name of the service file to your service file name.</li>
+  </ul>
+</ul>
+<p class="p17"><span class="s2"><span class="Apple-converted-space">  </span></span>"scripts"<span class="s2">: {</span></p>
+<p class="p5"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s10">"start"</span><span class="s2">: </span>"node server.js"<span class="s2">,</span></p>
+<p class="p5"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s10">"bundle"</span><span class="s2">: </span>"mkdir deploy &amp;&amp; cp -r app server.js package.json package-lock.json tutorial-backend-simple.service .env deploy"</p>
+<p class="p10"><span class="Apple-converted-space">  <span class="Apple-tab-span">	</span><span class="Apple-tab-span">	</span></span>},</p>
+<p class="p6"><br></p>
+<ul class="ul1">
+  <li class="li2">Update the node-deploy.yml for your deployment.</li>
+</ul>
+<ul class="ul1">
+  <li class="li2">Change the parameters for the Deploy to Server step to match where you are deploying.<span class="Apple-converted-space">  </span>Most like the REMOTE_HOST and TARGET will change.</li>
+</ul>
+<p class="p10"><span class="Apple-converted-space">        </span><span class="s8">env</span>:</p>
+<p class="p11"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">SSH_PRIVATE_KEY</span><span class="s2">: </span><span class="s3">${{ </span>secrets<span class="s3">.</span>SERVER_SSH_KEY<span class="s3"> }}</span></p>
+<p class="p12"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">ARGS</span><span class="s2">: </span>"-rltgoDzvO --delete"</p>
+<p class="p10"><span class="Apple-converted-space">          </span><span class="s8">SOURCE</span>: <span class="s4">"dist/"</span></p>
+<p class="p12"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">REMOTE_HOST</span><span class="s2">: </span>"tutorial.eaglesoftwareteam.com"</p>
+<p class="p10"><span class="Apple-converted-space">          </span><span class="s8">REMOTE_USER</span>: <span class="s1">ubuntu</span></p>
+<p class="p12"><span class="s2"><span class="Apple-converted-space">          </span></span><span class="s8">TARGET</span><span class="s2">: </span>"/var/www/html/tutorial-frontend-vue3-simple"</p>
+<p class="p15"><br></p>
+</body>
+</html>
