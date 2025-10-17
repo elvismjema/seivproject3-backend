@@ -14,11 +14,11 @@ npm install --production
 
 # Restart PM2 application
 echo "🔄 Restarting application with PM2..."
-pm2 restart seivproject3-backend
+pm2 restart tracker-t2-backend
 
 # Show logs
 echo "📋 Showing recent logs..."
-pm2 logs seivproject3-backend --lines 50 --nostream
+pm2 logs tracker-t2-backend --lines 50 --nostream
 
 echo "✅ Deployment complete!"
-echo "Run 'pm2 logs seivproject3-backend' to view live logs"
+echo "Run 'pm2 logs tracker-t2-backend' to view live logs"
