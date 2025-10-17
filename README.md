@@ -85,3 +85,4 @@ dialectOptions: {
 ```
 # Test deployment
 # Updated OAuth credentials
+# Revert to original OAuth credentials
