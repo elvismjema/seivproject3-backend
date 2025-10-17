@@ -13,9 +13,6 @@ const dbConfig = {
   PASSWORD: db_pw,
   DB: db_name,
   dialect: "mysql",
-  dialectOptions: {
-    socketPath: '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock'
-  },
   pool: {
     max: 5,
     min: 0,
