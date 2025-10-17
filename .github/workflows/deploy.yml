@@ -1,60 +1,56 @@
-name: Deploy Backend to AWS
+name: DEPLOY BACKEND TO AWS
 
 on:
-  push:
-    branches: [ main, dev ]
   pull_request:
-    branches: [ main, dev ]
+    types: [closed]
+    branches:
+      - dev
 
 jobs:
-  deploy:
+  aws-deploy:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci --production
-      
-    - name: Create production environment file
-      run: |
-        echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" > .env
-        echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
-        echo "DB_HOST=${{ secrets.AWS_DB_HOST }}" >> .env
-        echo "DB_PORT=3306" >> .env
-        echo "DB_USER=${{ secrets.AWS_DB_USER }}" >> .env
-        echo "DB_PW=${{ secrets.AWS_DB_PW }}" >> .env
-        echo "DB_NAME=${{ secrets.AWS_DB_NAME }}" >> .env
-        echo "PORT=3122" >> .env
-        echo "NODE_ENV=production" >> .env
-        
-    - name: Deploy to AWS EC2
-      uses: easingthemes/ssh-deploy@main
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-        ARGS: "-rltgoDzvO --delete"
-        SOURCE: "./"
-        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-        REMOTE_USER: ubuntu
-        TARGET: "/home/ubuntu/nodeapps/2025/project3/t2"
-        
-    - name: Install dependencies and restart services
-      uses: appleboy/ssh-action@v0.1.7
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ubuntu
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        script: |
-          cd /home/ubuntu/nodeapps/2025/project3/t2
-          npm install --production
-          sudo systemctl stop tracker-t2-backend || true
-          sudo systemctl enable tracker-t2-backend
-          sudo systemctl start tracker-t2-backend
-          sudo systemctl status tracker-t2-backend
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Create production environment file
+        run: |
+          echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" > .env
+          echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
+          echo "DB_HOST=${{ secrets.AWS_DB_HOST }}" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_USER=${{ secrets.AWS_DB_USER }}" >> .env
+          echo "DB_PW=${{ secrets.AWS_DB_PW }}" >> .env
+          echo "DB_NAME=${{ secrets.AWS_DB_NAME }}" >> .env
+          echo "PORT=3122" >> .env
+          echo "NODE_ENV=production" >> .env
+      - run: npm install
+      - run: npm run bundle
+      - name: Deploy to Server
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          ARGS: "-rltgoDzvO --delete"
+          SOURCE: "deploy/"
+          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+          REMOTE_USER: ubuntu
+          TARGET: "nodeapps/2025/project3/t2"
+      - name: Execute SSH commands on remote server
+        uses: JimCronqvist/action-ssh@master
+        env:
+          NAME: "Root"
+        with:
+          hosts: "ubuntu@${{ secrets.REMOTE_HOST }}"
+          privateKey: ${{ secrets.SERVER_SSH_KEY }}
+          debug: false
+          command: |
+            cd nodeapps/2025/project3/t2
+            npm install --production
+            sudo systemctl stop tracker-t2-backend || true
+            sudo cp tracker-t2-backend.service /lib/systemd/system/tracker-t2-backend.service
+            sudo systemctl daemon-reload
+            sudo systemctl enable tracker-t2-backend
+            sudo systemctl start tracker-t2-backend
