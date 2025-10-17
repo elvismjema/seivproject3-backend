@@ -15,6 +15,9 @@ const authenticate = (req, res, next) => {
           console.log(session.expirationDate);
           if (session != null) {
             if (session.expirationDate >= Date.now()) {
+              // Set userId in request for controllers to use
+              req.userId = session.userId;
+              req.userEmail = session.email;
               next();
               return;
             } else
