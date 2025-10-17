@@ -1,11 +1,11 @@
 [Unit]
-Description=NodeJS Tutorial App
+Description=NodeJS SEIV Project 3 Exercise Tracker App
 After=network.target
  
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/nodeapps/tutorial-backend/
+WorkingDirectory=/home/ubuntu/nodeapps/seivproject3-backend/
 ExecStart=npm run start
 Restart=on-failure
  
