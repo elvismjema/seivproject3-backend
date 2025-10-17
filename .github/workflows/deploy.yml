@@ -1,6 +1,9 @@
 name: DEPLOY BACKEND TO AWS
 
 on:
+  push:
+    branches:
+      - dev
   pull_request:
     types: [closed]
     branches:
