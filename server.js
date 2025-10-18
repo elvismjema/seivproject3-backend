@@ -12,7 +12,7 @@ const app = express();
 
 // Also use the cors middleware as backup
 var corsOptions = {
-  origin: ["http://localhost:8081", "https://project2.eaglesoftwareteam.com"],
+  origin: ["http://localhost:8081", "https://project2.eaglesoftwareteam.com", "http://project2.eaglesoftwareteam.com"],
   credentials: true
 }
 app.use(cors(corsOptions));
