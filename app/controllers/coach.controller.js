@@ -432,6 +432,215 @@ export const getAthleteProgress = async (req, res) => {
   }
 };
 
+// Get weekly results count
+export const getWeeklyResultsCount = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    
+    // Get all athlete IDs for this coach
+    const athleteRelations = await AthleteCoach.findAll({
+      where: {
+        coachId,
+        endDate: null
+      },
+      attributes: ['athleteId']
+    });
+
+    const athleteIds = athleteRelations.map(ar => ar.athleteId);
+
+    if (athleteIds.length === 0) {
+      return res.status(200).json({ count: 0 });
+    }
+
+    // Get start of current week
+    const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+    // Count results from this week
+    const count = await ExerciseResult.count({
+      where: {
+        athleteId: {
+          [Op.in]: athleteIds
+        },
+        performedDate: {
+          [Op.gte]: startOfWeek
+        }
+      }
+    });
+
+    res.status(200).json({ count });
+  } catch (error) {
+    console.error("Error getting weekly results count:", error);
+    res.status(500).json({ message: "Failed to get weekly results count", error: error.message });
+  }
+};
+
+// Get exercises
+export const getExercises = async (req, res) => {
+  try {
+    const coachId = req.userId;
+
+    const exercises = await Exercise.findAll({
+      where: {
+        [Op.or]: [
+          { createdBy: coachId },
+          { isStandard: true }
+        ]
+      },
+      order: [['name', 'ASC']]
+    });
+
+    res.status(200).json({ data: exercises });
+  } catch (error) {
+    console.error("Error fetching exercises:", error);
+    res.status(500).json({ message: "Failed to fetch exercises", error: error.message });
+  }
+};
+
+// Create exercise
+export const createExercise = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { name, category, description } = req.body;
+
+    if (!name || !category) {
+      return res.status(400).json({ message: "Name and category are required" });
+    }
+
+    const exercise = await Exercise.create({
+      name,
+      category,
+      description,
+      isStandard: false,
+      createdBy: coachId
+    });
+
+    res.status(201).json({
+      message: "Exercise created successfully",
+      data: exercise
+    });
+  } catch (error) {
+    console.error("Error creating exercise:", error);
+    res.status(500).json({ message: "Failed to create exercise", error: error.message });
+  }
+};
+
+// Update exercise
+export const updateExercise = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { exerciseId } = req.params;
+    const { name, category, description } = req.body;
+
+    const exercise = await Exercise.findOne({
+      where: {
+        id: exerciseId,
+        createdBy: coachId
+      }
+    });
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Exercise not found or you don't have permission to edit it" });
+    }
+
+    await exercise.update({
+      name: name || exercise.name,
+      category: category || exercise.category,
+      description: description || exercise.description
+    });
+
+    res.status(200).json({
+      message: "Exercise updated successfully",
+      data: exercise
+    });
+  } catch (error) {
+    console.error("Error updating exercise:", error);
+    res.status(500).json({ message: "Failed to update exercise", error: error.message });
+  }
+};
+
+// Delete exercise
+export const deleteExercise = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { exerciseId } = req.params;
+
+    const exercise = await Exercise.findOne({
+      where: {
+        id: exerciseId,
+        createdBy: coachId
+      }
+    });
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Exercise not found or you don't have permission to delete it" });
+    }
+
+    await exercise.destroy();
+
+    res.status(200).json({ message: "Exercise deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting exercise:", error);
+    res.status(500).json({ message: "Failed to delete exercise", error: error.message });
+  }
+};
+
+// Get custom exercises count
+export const getCustomExercisesCount = async (req, res) => {
+  try {
+    const coachId = req.userId;
+
+    const count = await Exercise.count({
+      where: {
+        createdBy: coachId,
+        isStandard: false
+      }
+    });
+
+    res.status(200).json({ count });
+  } catch (error) {
+    console.error("Error getting custom exercises count:", error);
+    res.status(500).json({ message: "Failed to get custom exercises count", error: error.message });
+  }
+};
+
+// Get active goals count
+export const getActiveGoalsCount = async (req, res) => {
+  try {
+    const coachId = req.userId;
+
+    // Get all athlete IDs for this coach
+    const athleteRelations = await AthleteCoach.findAll({
+      where: {
+        coachId,
+        endDate: null
+      },
+      attributes: ['athleteId']
+    });
+
+    const athleteIds = athleteRelations.map(ar => ar.athleteId);
+
+    if (athleteIds.length === 0) {
+      return res.status(200).json({ count: 0 });
+    }
+
+    const count = await Goal.count({
+      where: {
+        athleteId: {
+          [Op.in]: athleteIds
+        },
+        status: 'active'
+      }
+    });
+
+    res.status(200).json({ count });
+  } catch (error) {
+    console.error("Error getting active goals count:", error);
+    res.status(500).json({ message: "Failed to get active goals count", error: error.message });
+  }
+};
+
 // Helper function
 function formatPerformance(result) {
   const parts = [];
