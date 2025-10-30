@@ -23,5 +23,16 @@ router.post("/goals", CoachController.createGoal);
 
 // Results routes
 router.get("/results/recent", CoachController.getCoachRecentResults);
+router.get("/results/weekly/count", CoachController.getWeeklyResultsCount);
+
+// Exercise routes
+router.get("/exercises", CoachController.getExercises);
+router.post("/exercises", CoachController.createExercise);
+router.put("/exercises/:exerciseId", CoachController.updateExercise);
+router.delete("/exercises/:exerciseId", CoachController.deleteExercise);
+router.get("/exercises/custom/count", CoachController.getCustomExercisesCount);
+
+// Goals count route
+router.get("/goals/active/count", CoachController.getActiveGoalsCount);
 
 export default router;
