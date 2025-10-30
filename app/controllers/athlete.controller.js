@@ -338,3 +338,204 @@ function getValueByUnit(result, unit) {
       return 0;
   }
 }
+
+// Get available exercises
+export const getAvailableExercises = async (req, res) => {
+  try {
+    const athleteId = req.userId;
+    
+    // Get all exercises available to the athlete
+    const exercises = await Exercise.findAll({
+      where: {
+        [Op.or]: [
+          { isStandard: true },  // Standard exercises
+          {
+            id: {
+              [Op.in]: db.sequelize.literal(`(
+                SELECT DISTINCT e.id 
+                FROM exercises e
+                INNER JOIN plan_exercises pe ON e.id = pe.exerciseId
+                INNER JOIN exercise_plans ep ON pe.planId = ep.id
+                INNER JOIN athlete_plans ap ON ep.id = ap.planId
+                WHERE ap.athleteId = ${athleteId}
+                  AND (ap.endDate IS NULL OR ap.endDate >= CURRENT_DATE)
+              )`)
+            }
+          }
+        ]
+      },
+      attributes: ['id', 'name', 'category', 'description'],
+      order: [['name', 'ASC']]
+    });
+
+    res.status(200).json({ data: exercises });
+  } catch (error) {
+    console.error("Error getting available exercises:", error);
+    res.status(500).json({ message: "Failed to get available exercises", error: error.message });
+  }
+};
+
+// Record a single exercise session
+export const recordExercise = async (req, res) => {
+  try {
+    const athleteId = req.userId;
+    const { exerciseId, performedAt, sets, notes } = req.body;
+
+    if (!exerciseId || !performedAt || !sets || sets.length === 0) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Create workout result
+    const result = await ExerciseResult.create({
+      athleteId,
+      exerciseId,
+      performedDate: new Date(performedAt),
+      notes,
+      sets: sets.length,
+      reps: sets.reduce((total, set) => total + (set.reps || 0), 0),
+      weight: Math.max(...sets.map(set => set.weight || 0))
+    });
+
+    // Create sets in database if you have a separate table for sets
+    if (db.exerciseSet) {
+      const setPromises = sets.map(set => 
+        db.exerciseSet.create({
+          resultId: result.id,
+          reps: set.reps,
+          weight: set.weight,
+          notes: set.notes
+        })
+      );
+
+      await Promise.all(setPromises);
+    }
+
+    res.status(201).json({ 
+      message: "Exercise recorded successfully",
+      data: result
+    });
+  } catch (error) {
+    console.error("Error recording exercise:", error);
+    res.status(500).json({ message: "Failed to record exercise", error: error.message });
+  }
+};
+
+// Record a single set during a workout
+export const recordExerciseSet = async (req, res) => {
+  try {
+    const athleteId = req.userId;
+    const { exerciseId, reps, weight, notes } = req.body;
+
+    if (!exerciseId || !reps) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Create or get today's result for this exercise
+    const [result] = await ExerciseResult.findOrCreate({
+      where: {
+        athleteId,
+        exerciseId,
+        performedDate: {
+          [Op.gte]: new Date().setHours(0, 0, 0, 0)
+        }
+      },
+      defaults: {
+        athleteId,
+        exerciseId,
+        performedDate: new Date(),
+        sets: 0,
+        reps: 0
+      }
+    });
+
+    // Update the result with new set information
+    await result.update({
+      sets: result.sets + 1,
+      reps: result.reps + reps,
+      weight: Math.max(result.weight || 0, weight || 0)
+    });
+
+    // Create set in database if you have a separate table for sets
+    let set;
+    if (db.exerciseSet) {
+      set = await db.exerciseSet.create({
+        resultId: result.id,
+        reps,
+        weight,
+        notes
+      });
+    }
+
+    res.status(201).json({
+      message: "Set recorded successfully",
+      data: set || { reps, weight, notes }
+    });
+  } catch (error) {
+    console.error("Error recording set:", error);
+    res.status(500).json({ message: "Failed to record set", error: error.message });
+  }
+};
+
+// Complete a workout session
+export const completeWorkout = async (req, res) => {
+  try {
+    const athleteId = req.userId;
+    const { duration, exercises, notes } = req.body;
+
+    if (!exercises || exercises.length === 0) {
+      return res.status(400).json({ message: "No exercises provided" });
+    }
+
+    // Create workout session if you have a sessions table
+    let session;
+    if (db.session) {
+      session = await db.session.create({
+        athleteId,
+        duration,
+        notes,
+        completedAt: new Date()
+      });
+    }
+
+    // Record results for each exercise
+    const resultPromises = exercises.map(async exercise => {
+      if (!exercise.completed) return null;
+
+      const result = await ExerciseResult.create({
+        sessionId: session?.id,
+        athleteId,
+        exerciseId: exercise.id,
+        performedDate: new Date(),
+        sets: exercise.setsDone,
+        reps: exercise.reps * exercise.setsDone,
+        weight: exercise.weight,
+        notes: exercise.notes
+      });
+
+      // Create sets in database if you have a separate table for sets
+      if (db.exerciseSet && exercise.setsDone > 0) {
+        await db.exerciseSet.create({
+          resultId: result.id,
+          reps: exercise.reps,
+          weight: exercise.weight,
+          notes: exercise.notes
+        });
+      }
+
+      return result;
+    });
+
+    const results = await Promise.all(resultPromises);
+
+    res.status(201).json({
+      message: "Workout completed successfully",
+      data: {
+        session,
+        results: results.filter(r => r !== null)
+      }
+    });
+  } catch (error) {
+    console.error("Error completing workout:", error);
+    res.status(500).json({ message: "Failed to complete workout", error: error.message });
+  }
+};

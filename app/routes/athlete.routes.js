@@ -22,4 +22,10 @@ router.get("/coaches", AthleteController.getAthleteCoaches);
 // Plan routes
 router.get("/plans", AthleteController.getAssignedPlans);
 
+// Exercise routes
+router.get("/exercises", AthleteController.getAvailableExercises);
+router.post("/exercises/record", AthleteController.recordExercise);
+router.post("/exercises/set", AthleteController.recordExerciseSet);
+router.post("/workouts/complete", AthleteController.completeWorkout);
+
 export default router;
