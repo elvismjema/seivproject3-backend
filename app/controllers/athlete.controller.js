@@ -345,25 +345,8 @@ export const getAvailableExercises = async (req, res) => {
     const athleteId = req.userId;
     
     // Get all exercises available to the athlete
+    // Temporarily showing all exercises for testing
     const exercises = await Exercise.findAll({
-      where: {
-        [Op.or]: [
-          { isStandard: true },  // Standard exercises
-          {
-            id: {
-              [Op.in]: db.sequelize.literal(`(
-                SELECT DISTINCT e.id 
-                FROM exercises e
-                INNER JOIN plan_exercises pe ON e.id = pe.exerciseId
-                INNER JOIN exercise_plans ep ON pe.planId = ep.id
-                INNER JOIN athlete_plans ap ON ep.id = ap.planId
-                WHERE ap.athleteId = ${athleteId}
-                  AND (ap.endDate IS NULL OR ap.endDate >= CURRENT_DATE)
-              )`)
-            }
-          }
-        ]
-      },
       attributes: ['id', 'name', 'category', 'description'],
       order: [['name', 'ASC']]
     });
@@ -486,52 +469,35 @@ export const completeWorkout = async (req, res) => {
       return res.status(400).json({ message: "No exercises provided" });
     }
 
-    // Create workout session if you have a sessions table
-    let session;
-    if (db.session) {
-      session = await db.session.create({
-        athleteId,
-        duration,
-        notes,
-        completedAt: new Date()
-      });
-    }
-
     // Record results for each exercise
     const resultPromises = exercises.map(async exercise => {
       if (!exercise.completed) return null;
 
+      // Use setsDone from exercise, or default to sets if setsDone is 0
+      const actualSets = exercise.setsDone > 0 ? exercise.setsDone : exercise.sets;
+      
       const result = await ExerciseResult.create({
-        sessionId: session?.id,
         athleteId,
         exerciseId: exercise.id,
         performedDate: new Date(),
-        sets: exercise.setsDone,
-        reps: exercise.reps * exercise.setsDone,
+        sets: actualSets,
+        reps: exercise.reps,
         weight: exercise.weight,
-        notes: exercise.notes
+        notes: notes || exercise.notes
       });
-
-      // Create sets in database if you have a separate table for sets
-      if (db.exerciseSet && exercise.setsDone > 0) {
-        await db.exerciseSet.create({
-          resultId: result.id,
-          reps: exercise.reps,
-          weight: exercise.weight,
-          notes: exercise.notes
-        });
-      }
 
       return result;
     });
 
     const results = await Promise.all(resultPromises);
+    const completedResults = results.filter(r => r !== null);
 
     res.status(201).json({
       message: "Workout completed successfully",
       data: {
-        session,
-        results: results.filter(r => r !== null)
+        exercisesCompleted: completedResults.length,
+        duration: duration,
+        results: completedResults
       }
     });
   } catch (error) {
