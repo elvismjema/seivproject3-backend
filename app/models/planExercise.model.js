@@ -1,62 +1,65 @@
 import Sequelize from "sequelize";
-import SequelizeInstance from "../config/sequelizeInstance.js";
+  import SequelizeInstance from "../config/sequelizeInstance.js";
 
-const PlanExercise = SequelizeInstance.define("planExercise", {
-  id: {
-    type: Sequelize.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  planId: {
-    type: Sequelize.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'exercisePlans',
-      key: 'id',
+  const PlanExercise = SequelizeInstance.define("planExercise", {
+    id: {
+      type: Sequelize.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
     },
-  },
-  exerciseId: {
-    type: Sequelize.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'exercises',
-      key: 'id',
+    planId: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'exercisePlans',
+        key: 'id',
+      },
     },
-  },
-  dayOfWeek: {
-    type: Sequelize.INTEGER,
-    allowNull: false,
-    validate: {
-      min: 1,
-      max: 7,
+    exerciseId: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'exercises',
+        key: 'id',
+      },
     },
-    comment: 'Day of week (1=Monday, 7=Sunday)',
-  },
-  sets: {
-    type: Sequelize.INTEGER,
-    allowNull: true,
-    comment: 'Number of sets',
-  },
-  reps: {
-    type: Sequelize.INTEGER,
-    allowNull: true,
-    comment: 'Number of reps per set',
-  },
-  duration: {
-    type: Sequelize.INTEGER,
-    allowNull: true,
-    comment: 'Duration in seconds',
-  },
-  restTime: {
-    type: Sequelize.INTEGER,
-    allowNull: true,
-    comment: 'Rest between sets in seconds',
-  },
-  order: {
-    type: Sequelize.INTEGER,
-    allowNull: false,
-    comment: 'Exercise order in the day',
-  },
-});
+    dayOfWeek: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      validate: {
+        min: 1,
+        max: 7,
+      },
+      comment: 'Day of week (1=Monday, 7=Sunday)',
+    },
+    sets: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      comment: 'Number of sets',
+    },
+    reps: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      comment: 'Number of reps per set',
+    },
+    duration: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      comment: 'Duration in seconds',
+    },
+    restTime: {
+      type: Sequelize.INTEGER,
+      allowNull: true,
+      comment: 'Rest between sets in seconds',
+    },
+    order: {
+      type: Sequelize.INTEGER,
+      allowNull: false,
+      comment: 'Exercise order in the day',
+    },
+  }, {
+    tableName: 'planExercises',  // This tells Sequelize to use 'planExercises' instead of 'plan_exercises'
+    timestamps: false             // Add this if your table doesn't have createdAt/updatedAt columns
+  });
 
-export default PlanExercise;
+  export default PlanExercise;
