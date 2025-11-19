@@ -156,7 +156,7 @@ export const removeAthlete = async (req, res) => {
 export const createPlan = async (req, res) => {
   try {
     const coachId = req.userId;
-    const { name, description, duration, exercises } = req.body;
+    const { name, description, duration, dayCheck, exercises } = req.body;
 
     if (!name || !duration) {
       return res.status(400).json({ message: "Name and duration are required" });
@@ -167,6 +167,7 @@ export const createPlan = async (req, res) => {
       name,
       description,
       duration,
+      dayCheck: dayCheck || 'Monday,Wednesday,Friday', // Use provided days or default
       isStandard: false,
       createdBy: coachId
     });
