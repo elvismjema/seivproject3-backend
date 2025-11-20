@@ -394,6 +394,8 @@ export const getAthleteProgress = async (req, res) => {
     const { athleteId } = req.params;
     const { exerciseId, days = 30 } = req.query;
 
+    console.log(`[getAthleteProgress] Coach: ${coachId}, Athlete: ${athleteId}, Days: ${days}`);
+
     // Verify coach-athlete relationship
     const relationship = await AthleteCoach.findOne({
       where: {
@@ -403,7 +405,10 @@ export const getAthleteProgress = async (req, res) => {
       }
     });
 
+    console.log(`[getAthleteProgress] Relationship found: ${!!relationship}`);
+
     if (!relationship) {
+      console.error(`[getAthleteProgress] No coach-athlete relationship found for coach ${coachId} and athlete ${athleteId}`);
       return res.status(403).json({ message: "You don't have permission to view this athlete's progress" });
     }
 
