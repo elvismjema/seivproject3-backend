@@ -9,6 +9,7 @@ import ExerciseResultRoutes from "./exerciseResult.routes.js";
 import AthleteCoachRoutes from "./athleteCoach.routes.js";
 import AthleteRoutes from "./athlete.routes.js";
 import CoachRoutes from "./coach.routes.js";
+import AdminRoutes from "./admin.routes.js";
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use("/exercise-results", ExerciseResultRoutes);
 router.use("/athlete-coach", AthleteCoachRoutes);
 router.use("/athlete", AthleteRoutes);
 router.use("/coach", CoachRoutes);
+router.use("/admin", AdminRoutes);
 
 export default router;
