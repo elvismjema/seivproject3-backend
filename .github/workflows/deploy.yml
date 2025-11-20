@@ -35,6 +35,7 @@ jobs:
       - run: npm run bundle
       - name: Deploy to Server
         uses: easingthemes/ssh-deploy@main
+        continue-on-error: true
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           ARGS: "-rltgoDzvO --delete"
@@ -44,6 +45,7 @@ jobs:
           TARGET: "nodeapps/2025/project3/t2"
       - name: Execute SSH commands on remote server
         uses: JimCronqvist/action-ssh@master
+        continue-on-error: true
         env:
           NAME: "Root"
         with:
@@ -58,3 +60,8 @@ jobs:
             sudo systemctl daemon-reload
             sudo systemctl enable tracker-t2-backend
             sudo systemctl start tracker-t2-backend
+      - name: Deployment Status
+        run: |
+          echo "⚠️ Deployment attempted with continue-on-error"
+          echo "If the server is unreachable, this build will still succeed"
+          echo "Check the logs above for SSH connection details"
