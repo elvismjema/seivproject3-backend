@@ -1048,7 +1048,7 @@ export const deletePlan = async (req, res) => {
     }
 
     // Check if plan is assigned to any athletes
-    const assignments = await PlanAssignment.count({
+    const assignments = await AthletePlan.count({
       where: { planId: plan.id }
     });
 
