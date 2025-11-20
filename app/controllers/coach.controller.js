@@ -93,8 +93,8 @@ export const addAthlete = async (req, res) => {
       return res.status(400).json({ message: "Athlete ID or email is required" });
     }
 
-    // Check if relationship already exists
-    const existing = await AthleteCoach.findOne({
+    // Check if active relationship already exists
+    const activeRelationship = await AthleteCoach.findOne({
       where: {
         athleteId: targetAthleteId,
         coachId,
@@ -102,15 +102,39 @@ export const addAthlete = async (req, res) => {
       }
     });
 
-    if (existing) {
+    if (activeRelationship) {
       return res.status(400).json({ message: "This athlete is already assigned to you" });
     }
 
-    // Create relationship
+    // Check if there's an ended relationship that we can reactivate
+    const endedRelationship = await AthleteCoach.findOne({
+      where: {
+        athleteId: targetAthleteId,
+        coachId,
+        endDate: { [Op.ne]: null }
+      }
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+
+    if (endedRelationship) {
+      // Reactivate the existing relationship
+      endedRelationship.startDate = today;
+      endedRelationship.endDate = null;
+      await endedRelationship.save();
+
+      return res.status(201).json({
+        message: "Athlete added successfully",
+        data: endedRelationship
+      });
+    }
+
+    // Create new relationship - format date as YYYY-MM-DD for DATEONLY field
     const relationship = await AthleteCoach.create({
       athleteId: targetAthleteId,
       coachId,
-      startDate: new Date()
+      startDate: today,
+      endDate: null
     });
 
     res.status(201).json({
@@ -119,7 +143,19 @@ export const addAthlete = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding athlete:", error);
-    res.status(500).json({ message: "Failed to add athlete", error: error.message });
+    // Log Sequelize validation errors if they exist
+    if (error.errors) {
+      console.error("Validation errors:", error.errors.map(e => ({
+        field: e.path,
+        message: e.message,
+        type: e.type
+      })));
+    }
+    res.status(500).json({ 
+      message: "Failed to add athlete", 
+      error: error.message,
+      details: error.errors ? error.errors.map(e => e.message) : undefined
+    });
   }
 };
 
@@ -182,13 +218,12 @@ export const createPlan = async (req, res) => {
       const planExercises = exercises.map((ex, index) => ({
         planId: plan.id,
         exerciseId: ex.exerciseId,
-        dayNumber: ex.dayNumber || 1,
+        dayOfWeek: ex.dayOfWeek || 1,  // Changed from dayNumber to dayOfWeek
         sets: ex.sets,
         reps: ex.reps,
-        weight: ex.weight,
         duration: ex.duration,
-        restPeriod: ex.restPeriod,
-        orderIndex: index
+        restTime: ex.restTime || 60,  // Changed from restPeriod to restTime, default 60 seconds
+        order: index + 1  // Changed from orderIndex to order, starting at 1
       }));
 
       await PlanExercise.bulkCreate(planExercises);
@@ -394,8 +429,6 @@ export const getAthleteProgress = async (req, res) => {
     const { athleteId } = req.params;
     const { exerciseId, days = 30 } = req.query;
 
-    console.log(`[getAthleteProgress] Coach: ${coachId}, Athlete: ${athleteId}, Days: ${days}`);
-
     // Verify coach-athlete relationship
     const relationship = await AthleteCoach.findOne({
       where: {
@@ -405,12 +438,39 @@ export const getAthleteProgress = async (req, res) => {
       }
     });
 
-    console.log(`[getAthleteProgress] Relationship found: ${!!relationship}`);
-
     if (!relationship) {
-      console.error(`[getAthleteProgress] No coach-athlete relationship found for coach ${coachId} and athlete ${athleteId}`);
       return res.status(403).json({ message: "You don't have permission to view this athlete's progress" });
     }
+
+    // Get athlete information
+    const athlete = await User.findOne({
+      where: { id: athleteId },
+      attributes: ['id', 'fName', 'lName', 'email']
+    });
+
+    if (!athlete) {
+      return res.status(404).json({ message: "Athlete not found" });
+    }
+
+    // Get current plan
+    const today = new Date().toISOString().split('T')[0];
+    const activePlan = await AthletePlan.findOne({
+      where: {
+        athleteId,
+        startDate: {
+          [Op.lte]: today
+        },
+        [Op.or]: [
+          { endDate: null },
+          { endDate: { [Op.gte]: today } }
+        ]
+      },
+      include: [{
+        model: ExercisePlan,
+        as: 'plan',
+        attributes: ['id', 'name', 'description']
+      }]
+    });
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
@@ -426,17 +486,146 @@ export const getAthleteProgress = async (req, res) => {
       whereClause.exerciseId = exerciseId;
     }
 
-    const results = await ExerciseResult.findAll({
+    // Get workout history
+    const workoutHistory = await ExerciseResult.findAll({
       where: whereClause,
       include: [{
         model: Exercise,
         as: 'exercise',
         attributes: ['id', 'name', 'category']
       }],
-      order: [['performedDate', 'ASC']]
+      order: [['performedDate', 'DESC']],
+      limit: 50
     });
 
-    res.status(200).json({ data: results });
+    // Get all-time workout count
+    const totalWorkouts = await ExerciseResult.count({
+      where: { athleteId }
+    });
+
+    // Get this week's workout count
+    const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+    const weeklyWorkouts = await ExerciseResult.count({
+      where: {
+        athleteId,
+        performedDate: {
+          [Op.gte]: startOfWeek
+        }
+      }
+    });
+
+    // Get active goals
+    const goals = await Goal.findAll({
+      where: {
+        athleteId,
+        status: 'active'
+      },
+      include: [{
+        model: Exercise,
+        as: 'exercise',
+        attributes: ['id', 'name']
+      }],
+      order: [['targetDate', 'ASC']]
+    });
+
+    // Calculate personal records (simplified - could be enhanced)
+    const personalRecords = await ExerciseResult.count({
+      where: {
+        athleteId,
+        isPersonalRecord: true
+      }
+    });
+
+    // Calculate current streak (simplified - days with at least one workout)
+    const recentDays = await ExerciseResult.findAll({
+      where: {
+        athleteId,
+        performedDate: {
+          [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+      },
+      attributes: ['performedDate'],
+      group: ['performedDate'],
+      order: [['performedDate', 'DESC']]
+    });
+
+    let currentStreak = 0;
+    if (recentDays.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      for (let i = 0; i < recentDays.length; i++) {
+        const workoutDate = new Date(recentDays[i].performedDate);
+        workoutDate.setHours(0, 0, 0, 0);
+        
+        const expectedDate = new Date(today);
+        expectedDate.setDate(expectedDate.getDate() - i);
+        expectedDate.setHours(0, 0, 0, 0);
+        
+        if (workoutDate.getTime() === expectedDate.getTime()) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Format workout history for chart
+    const progressData = workoutHistory.map(w => ({
+      date: w.performedDate,
+      exerciseName: w.exercise.name,
+      sets: w.sets,
+      reps: w.reps,
+      weight: w.weight,
+      duration: w.duration,
+      distance: w.distance
+    }));
+
+    // Format response
+    const responseData = {
+      athlete: {
+        id: athlete.id,
+        name: `${athlete.fName} ${athlete.lName}`,
+        email: athlete.email,
+        currentPlan: activePlan ? activePlan.plan.name : null
+      },
+      workoutHistory: workoutHistory.map(w => ({
+        id: w.id,
+        exerciseName: w.exercise.name,
+        performedDate: w.performedDate,
+        date: w.performedDate,
+        sets: w.sets,
+        reps: w.reps,
+        weight: w.weight,
+        duration: w.duration,
+        distance: w.distance,
+        notes: w.notes,
+        exercise: {
+          name: w.exercise.name,
+          category: w.exercise.category
+        }
+      })),
+      goals: goals.map(g => ({
+        id: g.id,
+        title: g.exercise ? `${g.exercise.name} Goal` : 'Goal',
+        description: `Target: ${g.targetValue} ${g.targetUnit}`,
+        currentValue: g.currentValue || 0,
+        targetValue: g.targetValue,
+        targetDate: g.targetDate,
+        metric: g.targetUnit,
+        status: g.status
+      })),
+      totalWorkouts,
+      weeklyWorkouts,
+      personalRecords: personalRecords || 0,
+      currentStreak,
+      progressData
+    };
+
+    res.status(200).json({ data: responseData });
   } catch (error) {
     console.error("Error fetching athlete progress:", error);
     res.status(500).json({ message: "Failed to fetch athlete progress", error: error.message });
@@ -616,6 +805,69 @@ export const getCustomExercisesCount = async (req, res) => {
   }
 };
 
+// Get coach's goals
+export const getCoachGoals = async (req, res) => {
+  try {
+    const coachId = req.userId;
+
+    // Get all athlete IDs for this coach
+    const athleteRelations = await AthleteCoach.findAll({
+      where: {
+        coachId,
+        endDate: null
+      },
+      attributes: ['athleteId']
+    });
+
+    const athleteIds = athleteRelations.map(ar => ar.athleteId);
+
+    if (athleteIds.length === 0) {
+      return res.status(200).json({ data: [] });
+    }
+
+    // Fetch all goals for coach's athletes
+    const goals = await Goal.findAll({
+      where: {
+        athleteId: {
+          [Op.in]: athleteIds
+        }
+      },
+      include: [
+        {
+          model: User,
+          as: 'athlete',
+          attributes: ['id', 'fName', 'lName']
+        },
+        {
+          model: Exercise,
+          as: 'exercise',
+          attributes: ['id', 'name', 'category']
+        }
+      ],
+      order: [['targetDate', 'ASC']]
+    });
+
+    // Format goals for response
+    const formattedGoals = goals.map(g => ({
+      id: g.id,
+      athleteId: g.athleteId,
+      athleteName: `${g.athlete.fName} ${g.athlete.lName}`,
+      exerciseId: g.exerciseId,
+      exerciseName: g.exercise.name,
+      targetValue: g.targetValue,
+      targetUnit: g.targetUnit,
+      targetDate: g.targetDate,
+      status: g.status,
+      createdAt: g.createdAt
+    }));
+
+    res.status(200).json({ data: formattedGoals });
+  } catch (error) {
+    console.error("Error fetching coach goals:", error);
+    res.status(500).json({ message: "Failed to fetch goals", error: error.message });
+  }
+};
+
 // Get active goals count
 export const getActiveGoalsCount = async (req, res) => {
   try {
@@ -649,6 +901,177 @@ export const getActiveGoalsCount = async (req, res) => {
   } catch (error) {
     console.error("Error getting active goals count:", error);
     res.status(500).json({ message: "Failed to get active goals count", error: error.message });
+  }
+};
+
+// Record workout result for athlete (coach submitting on behalf of athlete)
+export const recordWorkoutResult = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { athleteId, exerciseId, performedDate, sets, reps, weight, duration, distance, notes } = req.body;
+
+    if (!athleteId || !exerciseId || !performedDate) {
+      return res.status(400).json({ message: "Athlete ID, exercise ID, and date are required" });
+    }
+
+    // Verify coach-athlete relationship
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship) {
+      return res.status(403).json({ message: "You don't have permission to record results for this athlete" });
+    }
+
+    // Verify exercise exists
+    const exercise = await Exercise.findByPk(exerciseId);
+    if (!exercise) {
+      return res.status(404).json({ message: "Exercise not found" });
+    }
+
+    // Create the exercise result
+    const result = await ExerciseResult.create({
+      athleteId,
+      exerciseId,
+      performedDate,
+      sets: sets || null,
+      reps: reps || null,
+      weight: weight || null,
+      duration: duration || null,
+      distance: distance || null,
+      notes: notes || '',
+      recordedBy: coachId
+    });
+
+    res.status(201).json({
+      message: "Workout result recorded successfully",
+      data: result
+    });
+  } catch (error) {
+    console.error("Error recording workout result:", error);
+    res.status(500).json({ message: "Failed to record workout result", error: error.message });
+  }
+};
+
+// Update training plan
+export const updatePlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { planId } = req.params;
+    const { name, description, duration, exercises } = req.body;
+
+    // Find the plan and verify ownership
+    const plan = await ExercisePlan.findOne({
+      where: {
+        id: planId,
+        createdBy: coachId
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found or you don't have permission to update it" });
+    }
+
+    // Update plan basic info
+    await plan.update({
+      name: name || plan.name,
+      description: description !== undefined ? description : plan.description,
+      duration: duration || plan.duration
+    });
+
+    // Update exercises if provided
+    if (exercises && Array.isArray(exercises)) {
+      // Delete existing plan exercises
+      await PlanExercise.destroy({
+        where: { planId: plan.id }
+      });
+
+      // Create new plan exercises
+      const planExercises = exercises.map((ex, index) => ({
+        planId: plan.id,
+        exerciseId: ex.exerciseId,
+        dayOfWeek: ex.dayOfWeek || 1,
+        sets: ex.sets,
+        reps: ex.reps,
+        duration: ex.duration,
+        restTime: ex.restTime || 60,
+        order: index + 1
+      }));
+
+      await PlanExercise.bulkCreate(planExercises);
+    }
+
+    // Fetch updated plan with exercises
+    const updatedPlan = await ExercisePlan.findOne({
+      where: { id: plan.id },
+      include: [{
+        model: PlanExercise,
+        as: 'planExercises',
+        include: [{
+          model: Exercise,
+          as: 'exercise',
+          attributes: ['id', 'name', 'category', 'equipment', 'muscleGroup']
+        }]
+      }]
+    });
+
+    res.status(200).json({
+      message: "Training plan updated successfully",
+      data: updatedPlan
+    });
+  } catch (error) {
+    console.error("Error updating plan:", error);
+    res.status(500).json({ message: "Failed to update plan", error: error.message });
+  }
+};
+
+// Delete training plan
+export const deletePlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { planId } = req.params;
+
+    // Find the plan and verify ownership
+    const plan = await ExercisePlan.findOne({
+      where: {
+        id: planId,
+        createdBy: coachId
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found or you don't have permission to delete it" });
+    }
+
+    // Check if plan is assigned to any athletes
+    const assignments = await PlanAssignment.count({
+      where: { planId: plan.id }
+    });
+
+    if (assignments > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete plan that is assigned to athletes. Please unassign it first." 
+      });
+    }
+
+    // Delete plan exercises first (cascade)
+    await PlanExercise.destroy({
+      where: { planId: plan.id }
+    });
+
+    // Delete the plan
+    await plan.destroy();
+
+    res.status(200).json({
+      message: "Training plan deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting plan:", error);
+    res.status(500).json({ message: "Failed to delete plan", error: error.message });
   }
 };
 
