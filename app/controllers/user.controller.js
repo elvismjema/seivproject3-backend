@@ -154,8 +154,8 @@ exports.getAdminStats = async (req, res) => {
     const totalCoaches = await User.count({ where: { role: 'coach' } });
     const totalAthletes = await User.count({ where: { role: 'athlete' } });
 
-    // For now, return 0 for exercises (will be implemented with Exercise model)
-    const totalExercises = 0;
+    // Count admin-created standard exercises
+    const totalExercises = await db.exercise.count({ where: { isStandard: true } });
 
     res.send({
       totalUsers,
