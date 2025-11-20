@@ -456,20 +456,14 @@ export const getAthleteProgress = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const activePlan = await AthletePlan.findOne({
       where: {
-        athleteId,
-        startDate: {
-          [Op.lte]: today
-        },
-        [Op.or]: [
-          { endDate: null },
-          { endDate: { [Op.gte]: today } }
-        ]
+        athleteId
       },
       include: [{
         model: ExercisePlan,
         as: 'plan',
         attributes: ['id', 'name', 'description']
-      }]
+      }],
+      order: [['startDate', 'DESC']]
     });
 
     const startDate = new Date();
@@ -628,6 +622,7 @@ export const getAthleteProgress = async (req, res) => {
     res.status(200).json({ data: responseData });
   } catch (error) {
     console.error("Error fetching athlete progress:", error);
+    console.error("Stack trace:", error.stack);
     res.status(500).json({ message: "Failed to fetch athlete progress", error: error.message });
   }
 };
