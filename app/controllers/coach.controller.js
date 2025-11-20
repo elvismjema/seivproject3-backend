@@ -548,8 +548,8 @@ export const getAthleteProgress = async (req, res) => {
         }
       },
       attributes: ['performedDate'],
-      group: ['performedDate'],
-      order: [['performedDate', 'DESC']]
+      order: [['performedDate', 'DESC']],
+      limit: 30
     });
 
     let currentStreak = 0;
