@@ -163,7 +163,7 @@ export const createPlan = async (req, res) => {
     }
 
     // Create plan
-    const plan = await ExercisePlan.create({
+    const planData = {
       name,
       description,
       duration,
@@ -171,7 +171,11 @@ export const createPlan = async (req, res) => {
       dayOpness: 0, // Add default value for dayOpness field
       isStandard: false,
       createdBy: coachId
-    });
+    };
+    
+    console.log('Creating plan with data:', planData);
+    
+    const plan = await ExercisePlan.create(planData);
 
     // Add exercises to plan if provided
     if (exercises && Array.isArray(exercises) && exercises.length > 0) {
