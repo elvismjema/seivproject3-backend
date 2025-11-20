@@ -1,24 +1,19 @@
-import 'dotenv/config';
-
-const db_host = process.env.DB_HOST;
-const db_port = process.env.DB_PORT;
-const db_pw = process.env.DB_PW;
-const db_user = process.env.DB_USER;
-const db_name = process.env.DB_NAME;
+import dotenv from 'dotenv';
+dotenv.config();
 
 const dbConfig = {
-  HOST: db_host,
-  PORT: db_port,
-  USER: db_user,
-  PASSWORD: db_pw,
-  DB: db_name,
-  dialect: "mysql",
+  HOST: process.env.DB_HOST,
+  USER: process.env.DB_USER,
+  PASSWORD: process.env.DB_PASSWORD,
+  DB: process.env.DB_NAME,
+  dialect: process.env.DB_DIALECT,
   pool: {
     max: 5,
     min: 0,
-    acquire: 30000, 
-    idle: 10000,
-  },
+    acquire: 30000,
+    idle: 10000
+  }
 };
 
 export default dbConfig;
+
