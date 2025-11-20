@@ -93,8 +93,8 @@ export const addAthlete = async (req, res) => {
       return res.status(400).json({ message: "Athlete ID or email is required" });
     }
 
-    // Check if relationship already exists
-    const existing = await AthleteCoach.findOne({
+    // Check if active relationship already exists
+    const activeRelationship = await AthleteCoach.findOne({
       where: {
         athleteId: targetAthleteId,
         coachId,
@@ -102,13 +102,34 @@ export const addAthlete = async (req, res) => {
       }
     });
 
-    if (existing) {
+    if (activeRelationship) {
       return res.status(400).json({ message: "This athlete is already assigned to you" });
     }
 
-    // Create relationship - format date as YYYY-MM-DD for DATEONLY field
+    // Check if there's an ended relationship that we can reactivate
+    const endedRelationship = await AthleteCoach.findOne({
+      where: {
+        athleteId: targetAthleteId,
+        coachId,
+        endDate: { [Op.ne]: null }
+      }
+    });
+
     const today = new Date().toISOString().split('T')[0];
-    
+
+    if (endedRelationship) {
+      // Reactivate the existing relationship
+      endedRelationship.startDate = today;
+      endedRelationship.endDate = null;
+      await endedRelationship.save();
+
+      return res.status(201).json({
+        message: "Athlete added successfully",
+        data: endedRelationship
+      });
+    }
+
+    // Create new relationship - format date as YYYY-MM-DD for DATEONLY field
     const relationship = await AthleteCoach.create({
       athleteId: targetAthleteId,
       coachId,
