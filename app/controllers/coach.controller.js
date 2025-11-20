@@ -106,11 +106,14 @@ export const addAthlete = async (req, res) => {
       return res.status(400).json({ message: "This athlete is already assigned to you" });
     }
 
-    // Create relationship
+    // Create relationship - format date as YYYY-MM-DD for DATEONLY field
+    const today = new Date().toISOString().split('T')[0];
+    
     const relationship = await AthleteCoach.create({
       athleteId: targetAthleteId,
       coachId,
-      startDate: new Date()
+      startDate: today,
+      endDate: null
     });
 
     res.status(201).json({
@@ -119,7 +122,19 @@ export const addAthlete = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding athlete:", error);
-    res.status(500).json({ message: "Failed to add athlete", error: error.message });
+    // Log Sequelize validation errors if they exist
+    if (error.errors) {
+      console.error("Validation errors:", error.errors.map(e => ({
+        field: e.path,
+        message: e.message,
+        type: e.type
+      })));
+    }
+    res.status(500).json({ 
+      message: "Failed to add athlete", 
+      error: error.message,
+      details: error.errors ? error.errors.map(e => e.message) : undefined
+    });
   }
 };
 
