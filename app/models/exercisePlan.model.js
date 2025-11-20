@@ -34,6 +34,18 @@ const ExercisePlan = SequelizeInstance.define("exercisePlan", {
       key: 'id',
     },
   },
+  dayCheck: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Bitmask for selected workout days',
+  },
+  dayOpness: {
+    type: Sequelize.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Bitmask for day openness',
+  },
 });
 
 export default ExercisePlan;
