@@ -20,10 +20,12 @@ router.post("/plans/assign", CoachController.assignPlan);
 
 // Goal routes
 router.post("/goals", CoachController.createGoal);
+router.get("/goals", CoachController.getCoachGoals);
 
 // Results routes
 router.get("/results/recent", CoachController.getCoachRecentResults);
 router.get("/results/weekly/count", CoachController.getWeeklyResultsCount);
+router.post("/results", CoachController.recordWorkoutResult);
 
 // Exercise routes
 router.get("/exercises", CoachController.getExercises);

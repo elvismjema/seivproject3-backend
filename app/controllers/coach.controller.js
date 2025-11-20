@@ -769,6 +769,69 @@ export const getCustomExercisesCount = async (req, res) => {
   }
 };
 
+// Get coach's goals
+export const getCoachGoals = async (req, res) => {
+  try {
+    const coachId = req.userId;
+
+    // Get all athlete IDs for this coach
+    const athleteRelations = await AthleteCoach.findAll({
+      where: {
+        coachId,
+        endDate: null
+      },
+      attributes: ['athleteId']
+    });
+
+    const athleteIds = athleteRelations.map(ar => ar.athleteId);
+
+    if (athleteIds.length === 0) {
+      return res.status(200).json({ data: [] });
+    }
+
+    // Fetch all goals for coach's athletes
+    const goals = await Goal.findAll({
+      where: {
+        athleteId: {
+          [Op.in]: athleteIds
+        }
+      },
+      include: [
+        {
+          model: User,
+          as: 'athlete',
+          attributes: ['id', 'fName', 'lName']
+        },
+        {
+          model: Exercise,
+          as: 'exercise',
+          attributes: ['id', 'name', 'category']
+        }
+      ],
+      order: [['targetDate', 'ASC']]
+    });
+
+    // Format goals for response
+    const formattedGoals = goals.map(g => ({
+      id: g.id,
+      athleteId: g.athleteId,
+      athleteName: `${g.athlete.fName} ${g.athlete.lName}`,
+      exerciseId: g.exerciseId,
+      exerciseName: g.exercise.name,
+      targetValue: g.targetValue,
+      targetUnit: g.targetUnit,
+      targetDate: g.targetDate,
+      status: g.status,
+      createdAt: g.createdAt
+    }));
+
+    res.status(200).json({ data: formattedGoals });
+  } catch (error) {
+    console.error("Error fetching coach goals:", error);
+    res.status(500).json({ message: "Failed to fetch goals", error: error.message });
+  }
+};
+
 // Get active goals count
 export const getActiveGoalsCount = async (req, res) => {
   try {
@@ -802,6 +865,59 @@ export const getActiveGoalsCount = async (req, res) => {
   } catch (error) {
     console.error("Error getting active goals count:", error);
     res.status(500).json({ message: "Failed to get active goals count", error: error.message });
+  }
+};
+
+// Record workout result for athlete (coach submitting on behalf of athlete)
+export const recordWorkoutResult = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { athleteId, exerciseId, performedDate, sets, reps, weight, duration, distance, notes } = req.body;
+
+    if (!athleteId || !exerciseId || !performedDate) {
+      return res.status(400).json({ message: "Athlete ID, exercise ID, and date are required" });
+    }
+
+    // Verify coach-athlete relationship
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship) {
+      return res.status(403).json({ message: "You don't have permission to record results for this athlete" });
+    }
+
+    // Verify exercise exists
+    const exercise = await Exercise.findByPk(exerciseId);
+    if (!exercise) {
+      return res.status(404).json({ message: "Exercise not found" });
+    }
+
+    // Create the exercise result
+    const result = await ExerciseResult.create({
+      athleteId,
+      exerciseId,
+      performedDate,
+      sets: sets || null,
+      reps: reps || null,
+      weight: weight || null,
+      duration: duration || null,
+      distance: distance || null,
+      notes: notes || '',
+      recordedBy: coachId
+    });
+
+    res.status(201).json({
+      message: "Workout result recorded successfully",
+      data: result
+    });
+  } catch (error) {
+    console.error("Error recording workout result:", error);
+    res.status(500).json({ message: "Failed to record workout result", error: error.message });
   }
 };
 
