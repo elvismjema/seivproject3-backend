@@ -176,13 +176,12 @@ export const createPlan = async (req, res) => {
       const planExercises = exercises.map((ex, index) => ({
         planId: plan.id,
         exerciseId: ex.exerciseId,
-        dayNumber: ex.dayNumber || 1,
+        dayOfWeek: ex.dayOfWeek || 1,  // Changed from dayNumber to dayOfWeek
         sets: ex.sets,
         reps: ex.reps,
-        weight: ex.weight,
         duration: ex.duration,
-        restPeriod: ex.restPeriod,
-        orderIndex: index
+        restTime: ex.restTime || 60,  // Changed from restPeriod to restTime, default 60 seconds
+        order: index + 1  // Changed from orderIndex to order, starting at 1
       }));
 
       await PlanExercise.bulkCreate(planExercises);
