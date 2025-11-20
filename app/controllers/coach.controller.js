@@ -921,6 +921,124 @@ export const recordWorkoutResult = async (req, res) => {
   }
 };
 
+// Update training plan
+export const updatePlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { planId } = req.params;
+    const { name, description, duration, exercises } = req.body;
+
+    // Find the plan and verify ownership
+    const plan = await ExercisePlan.findOne({
+      where: {
+        id: planId,
+        createdBy: coachId
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found or you don't have permission to update it" });
+    }
+
+    // Update plan basic info
+    await plan.update({
+      name: name || plan.name,
+      description: description !== undefined ? description : plan.description,
+      duration: duration || plan.duration
+    });
+
+    // Update exercises if provided
+    if (exercises && Array.isArray(exercises)) {
+      // Delete existing plan exercises
+      await PlanExercise.destroy({
+        where: { planId: plan.id }
+      });
+
+      // Create new plan exercises
+      const planExercises = exercises.map((ex, index) => ({
+        planId: plan.id,
+        exerciseId: ex.exerciseId,
+        dayOfWeek: ex.dayOfWeek || 1,
+        sets: ex.sets,
+        reps: ex.reps,
+        duration: ex.duration,
+        restTime: ex.restTime || 60,
+        order: index + 1
+      }));
+
+      await PlanExercise.bulkCreate(planExercises);
+    }
+
+    // Fetch updated plan with exercises
+    const updatedPlan = await ExercisePlan.findOne({
+      where: { id: plan.id },
+      include: [{
+        model: PlanExercise,
+        as: 'planExercises',
+        include: [{
+          model: Exercise,
+          as: 'exercise',
+          attributes: ['id', 'name', 'category', 'equipment', 'muscleGroup']
+        }]
+      }]
+    });
+
+    res.status(200).json({
+      message: "Training plan updated successfully",
+      data: updatedPlan
+    });
+  } catch (error) {
+    console.error("Error updating plan:", error);
+    res.status(500).json({ message: "Failed to update plan", error: error.message });
+  }
+};
+
+// Delete training plan
+export const deletePlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { planId } = req.params;
+
+    // Find the plan and verify ownership
+    const plan = await ExercisePlan.findOne({
+      where: {
+        id: planId,
+        createdBy: coachId
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found or you don't have permission to delete it" });
+    }
+
+    // Check if plan is assigned to any athletes
+    const assignments = await PlanAssignment.count({
+      where: { planId: plan.id }
+    });
+
+    if (assignments > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete plan that is assigned to athletes. Please unassign it first." 
+      });
+    }
+
+    // Delete plan exercises first (cascade)
+    await PlanExercise.destroy({
+      where: { planId: plan.id }
+    });
+
+    // Delete the plan
+    await plan.destroy();
+
+    res.status(200).json({
+      message: "Training plan deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting plan:", error);
+    res.status(500).json({ message: "Failed to delete plan", error: error.message });
+  }
+};
+
 // Helper function
 function formatPerformance(result) {
   const parts = [];
