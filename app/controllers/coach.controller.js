@@ -406,6 +406,36 @@ export const getAthleteProgress = async (req, res) => {
       return res.status(403).json({ message: "You don't have permission to view this athlete's progress" });
     }
 
+    // Get athlete information
+    const athlete = await User.findOne({
+      where: { id: athleteId },
+      attributes: ['id', 'fName', 'lName', 'email']
+    });
+
+    if (!athlete) {
+      return res.status(404).json({ message: "Athlete not found" });
+    }
+
+    // Get current plan
+    const today = new Date().toISOString().split('T')[0];
+    const activePlan = await AthletePlan.findOne({
+      where: {
+        athleteId,
+        startDate: {
+          [Op.lte]: today
+        },
+        [Op.or]: [
+          { endDate: null },
+          { endDate: { [Op.gte]: today } }
+        ]
+      },
+      include: [{
+        model: ExercisePlan,
+        as: 'plan',
+        attributes: ['id', 'name', 'description']
+      }]
+    });
+
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
 
@@ -420,17 +450,146 @@ export const getAthleteProgress = async (req, res) => {
       whereClause.exerciseId = exerciseId;
     }
 
-    const results = await ExerciseResult.findAll({
+    // Get workout history
+    const workoutHistory = await ExerciseResult.findAll({
       where: whereClause,
       include: [{
         model: Exercise,
         as: 'exercise',
         attributes: ['id', 'name', 'category']
       }],
-      order: [['performedDate', 'ASC']]
+      order: [['performedDate', 'DESC']],
+      limit: 50
     });
 
-    res.status(200).json({ data: results });
+    // Get all-time workout count
+    const totalWorkouts = await ExerciseResult.count({
+      where: { athleteId }
+    });
+
+    // Get this week's workout count
+    const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+    const weeklyWorkouts = await ExerciseResult.count({
+      where: {
+        athleteId,
+        performedDate: {
+          [Op.gte]: startOfWeek
+        }
+      }
+    });
+
+    // Get active goals
+    const goals = await Goal.findAll({
+      where: {
+        athleteId,
+        status: 'active'
+      },
+      include: [{
+        model: Exercise,
+        as: 'exercise',
+        attributes: ['id', 'name']
+      }],
+      order: [['targetDate', 'ASC']]
+    });
+
+    // Calculate personal records (simplified - could be enhanced)
+    const personalRecords = await ExerciseResult.count({
+      where: {
+        athleteId,
+        isPersonalRecord: true
+      }
+    });
+
+    // Calculate current streak (simplified - days with at least one workout)
+    const recentDays = await ExerciseResult.findAll({
+      where: {
+        athleteId,
+        performedDate: {
+          [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+      },
+      attributes: ['performedDate'],
+      group: ['performedDate'],
+      order: [['performedDate', 'DESC']]
+    });
+
+    let currentStreak = 0;
+    if (recentDays.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      for (let i = 0; i < recentDays.length; i++) {
+        const workoutDate = new Date(recentDays[i].performedDate);
+        workoutDate.setHours(0, 0, 0, 0);
+        
+        const expectedDate = new Date(today);
+        expectedDate.setDate(expectedDate.getDate() - i);
+        expectedDate.setHours(0, 0, 0, 0);
+        
+        if (workoutDate.getTime() === expectedDate.getTime()) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Format workout history for chart
+    const progressData = workoutHistory.map(w => ({
+      date: w.performedDate,
+      exerciseName: w.exercise.name,
+      sets: w.sets,
+      reps: w.reps,
+      weight: w.weight,
+      duration: w.duration,
+      distance: w.distance
+    }));
+
+    // Format response
+    const responseData = {
+      athlete: {
+        id: athlete.id,
+        name: `${athlete.fName} ${athlete.lName}`,
+        email: athlete.email,
+        currentPlan: activePlan ? activePlan.plan.name : null
+      },
+      workoutHistory: workoutHistory.map(w => ({
+        id: w.id,
+        exerciseName: w.exercise.name,
+        performedDate: w.performedDate,
+        date: w.performedDate,
+        sets: w.sets,
+        reps: w.reps,
+        weight: w.weight,
+        duration: w.duration,
+        distance: w.distance,
+        notes: w.notes,
+        exercise: {
+          name: w.exercise.name,
+          category: w.exercise.category
+        }
+      })),
+      goals: goals.map(g => ({
+        id: g.id,
+        title: g.exercise ? `${g.exercise.name} Goal` : 'Goal',
+        description: `Target: ${g.targetValue} ${g.targetUnit}`,
+        currentValue: g.currentValue || 0,
+        targetValue: g.targetValue,
+        targetDate: g.targetDate,
+        metric: g.targetUnit,
+        status: g.status
+      })),
+      totalWorkouts,
+      weeklyWorkouts,
+      personalRecords: personalRecords || 0,
+      currentStreak,
+      progressData
+    };
+
+    res.status(200).json({ data: responseData });
   } catch (error) {
     console.error("Error fetching athlete progress:", error);
     res.status(500).json({ message: "Failed to fetch athlete progress", error: error.message });
