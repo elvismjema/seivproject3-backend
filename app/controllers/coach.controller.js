@@ -167,7 +167,7 @@ export const createPlan = async (req, res) => {
       name,
       description,
       duration,
-      dayCheck: dayCheck || 'Monday,Wednesday,Friday', // Use provided days or default
+      dayCheck: 0, // Set to 0 as default (appears to be a bitmask or number field)
       dayOpness: 0, // Add default value for dayOpness field
       isStandard: false,
       createdBy: coachId
