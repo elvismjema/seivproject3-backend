@@ -16,6 +16,8 @@ router.get("/athletes/:athleteId/progress", CoachController.getAthleteProgress);
 // Training plan routes
 router.post("/plans", CoachController.createPlan);
 router.get("/plans", CoachController.getCoachPlans);
+router.put("/plans/:planId", CoachController.updatePlan);
+router.delete("/plans/:planId", CoachController.deletePlan);
 router.post("/plans/assign", CoachController.assignPlan);
 
 // Goal routes
