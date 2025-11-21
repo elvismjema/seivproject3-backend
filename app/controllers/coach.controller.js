@@ -321,6 +321,53 @@ export const assignPlan = async (req, res) => {
   }
 };
 
+// Unassign plan from athlete
+export const unassignPlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { athleteId, planId } = req.body;
+
+    if (!athleteId || !planId) {
+      return res.status(400).json({ message: "Athlete ID and Plan ID are required" });
+    }
+
+    // Verify coach-athlete relationship
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship) {
+      return res.status(403).json({ message: "You don't have permission to manage plans for this athlete" });
+    }
+
+    // Find and delete the active assignment
+    const assignment = await AthletePlan.findOne({
+      where: {
+        athleteId,
+        planId,
+        assignedBy: coachId
+      }
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Plan assignment not found" });
+    }
+
+    await assignment.destroy();
+
+    res.status(200).json({
+      message: "Plan unassigned successfully"
+    });
+  } catch (error) {
+    console.error("Error unassigning plan:", error);
+    res.status(500).json({ message: "Failed to unassign plan", error: error.message });
+  }
+};
+
 // Create goal for athlete
 export const createGoal = async (req, res) => {
   try {
