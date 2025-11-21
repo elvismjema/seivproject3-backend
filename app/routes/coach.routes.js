@@ -19,6 +19,7 @@ router.get("/plans", CoachController.getCoachPlans);
 router.put("/plans/:planId", CoachController.updatePlan);
 router.delete("/plans/:planId", CoachController.deletePlan);
 router.post("/plans/assign", CoachController.assignPlan);
+router.post("/plans/unassign", CoachController.unassignPlan);
 
 // Goal routes
 router.post("/goals", CoachController.createGoal);
