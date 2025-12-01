@@ -54,7 +54,8 @@ export const getCoachAthletes = async (req, res) => {
         name: `${ac.athlete.fName} ${ac.athlete.lName}`,
         email: ac.athlete.email,
         startDate: ac.startDate,
-        currentPlan: activePlan ? activePlan.plan.name : null
+        currentPlan: activePlan ? activePlan.plan.name : null,
+        currentPlanId: activePlan ? activePlan.plan.id : null
       };
     }));
 
