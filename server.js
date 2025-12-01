@@ -17,7 +17,9 @@ var corsOptions = {
     "http://localhost:5173",
     "https://project2.eaglesoftwareteam.com",
     "http://project2.eaglesoftwareteam.com",
-    "https://project2.eaglesoftwareteam.com/seiv2025/p3/t2"
+    "https://project2.eaglesoftwareteam.com/seiv2025/p3/t2",
+    "http://project3.eaglesoftwareteam.com",
+    "https://project3.eaglesoftwareteam.com"
   ],
   credentials: true
 }
