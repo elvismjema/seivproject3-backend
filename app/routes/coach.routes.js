@@ -16,11 +16,15 @@ router.get("/athletes/:athleteId/progress", CoachController.getAthleteProgress);
 // Training plan routes
 router.post("/plans", CoachController.createPlan);
 router.get("/plans", CoachController.getCoachPlans);
+router.put("/plans/:planId", CoachController.updatePlan);
+router.delete("/plans/:planId", CoachController.deletePlan);
 router.post("/plans/assign", CoachController.assignPlan);
+router.post("/plans/unassign", CoachController.unassignPlan);
 
 // Goal routes
 router.post("/goals", CoachController.createGoal);
 router.get("/goals", CoachController.getCoachGoals);
+router.delete("/goals/:goalId", CoachController.deleteGoal);
 
 // Results routes
 router.get("/results/recent", CoachController.getCoachRecentResults);

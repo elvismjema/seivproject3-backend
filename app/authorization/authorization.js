@@ -18,7 +18,24 @@ const authenticate = (req, res, next) => {
               // Set userId in request for controllers to use
               req.userId = session.userId;
               req.userEmail = session.email;
-              next();
+              
+              // Fetch user role
+              db.user.findByPk(session.userId)
+                .then(user => {
+                  if (user) {
+                    req.userRole = user.role;
+                    next();
+                  } else {
+                    return res.status(401).send({
+                      message: "Unauthorized! User not found",
+                    });
+                  }
+                })
+                .catch(err => {
+                  return res.status(500).send({
+                    message: "Error fetching user role",
+                  });
+                });
               return;
             } else
               return res.status(401).send({

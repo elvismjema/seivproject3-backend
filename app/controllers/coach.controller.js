@@ -54,7 +54,8 @@ export const getCoachAthletes = async (req, res) => {
         name: `${ac.athlete.fName} ${ac.athlete.lName}`,
         email: ac.athlete.email,
         startDate: ac.startDate,
-        currentPlan: activePlan ? activePlan.plan.name : null
+        currentPlan: activePlan ? activePlan.plan.name : null,
+        currentPlanId: activePlan ? activePlan.plan.id : null
       };
     }));
 
@@ -93,8 +94,8 @@ export const addAthlete = async (req, res) => {
       return res.status(400).json({ message: "Athlete ID or email is required" });
     }
 
-    // Check if relationship already exists
-    const existing = await AthleteCoach.findOne({
+    // Check if active relationship already exists
+    const activeRelationship = await AthleteCoach.findOne({
       where: {
         athleteId: targetAthleteId,
         coachId,
@@ -102,15 +103,39 @@ export const addAthlete = async (req, res) => {
       }
     });
 
-    if (existing) {
+    if (activeRelationship) {
       return res.status(400).json({ message: "This athlete is already assigned to you" });
     }
 
-    // Create relationship
+    // Check if there's an ended relationship that we can reactivate
+    const endedRelationship = await AthleteCoach.findOne({
+      where: {
+        athleteId: targetAthleteId,
+        coachId,
+        endDate: { [Op.ne]: null }
+      }
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+
+    if (endedRelationship) {
+      // Reactivate the existing relationship
+      endedRelationship.startDate = today;
+      endedRelationship.endDate = null;
+      await endedRelationship.save();
+
+      return res.status(201).json({
+        message: "Athlete added successfully",
+        data: endedRelationship
+      });
+    }
+
+    // Create new relationship - format date as YYYY-MM-DD for DATEONLY field
     const relationship = await AthleteCoach.create({
       athleteId: targetAthleteId,
       coachId,
-      startDate: new Date()
+      startDate: today,
+      endDate: null
     });
 
     res.status(201).json({
@@ -119,7 +144,19 @@ export const addAthlete = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding athlete:", error);
-    res.status(500).json({ message: "Failed to add athlete", error: error.message });
+    // Log Sequelize validation errors if they exist
+    if (error.errors) {
+      console.error("Validation errors:", error.errors.map(e => ({
+        field: e.path,
+        message: e.message,
+        type: e.type
+      })));
+    }
+    res.status(500).json({ 
+      message: "Failed to add athlete", 
+      error: error.message,
+      details: error.errors ? error.errors.map(e => e.message) : undefined
+    });
   }
 };
 
@@ -285,6 +322,64 @@ export const assignPlan = async (req, res) => {
   }
 };
 
+// Unassign plan from athlete
+export const unassignPlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { athleteId, planId } = req.body;
+
+    if (!athleteId || !planId) {
+      return res.status(400).json({ message: "Athlete ID and Plan ID are required" });
+    }
+
+    // Verify coach-athlete relationship
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship) {
+      return res.status(403).json({ message: "You don't have permission to manage plans for this athlete" });
+    }
+
+    // Find and delete the active assignment
+    // First try to find by coachId, then try without if not found
+    let assignment = await AthletePlan.findOne({
+      where: {
+        athleteId,
+        planId,
+        assignedBy: coachId
+      }
+    });
+
+    // If not found with coachId, try without (for legacy assignments)
+    if (!assignment) {
+      assignment = await AthletePlan.findOne({
+        where: {
+          athleteId,
+          planId
+        }
+      });
+    }
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Plan assignment not found" });
+    }
+
+    await assignment.destroy();
+
+    res.status(200).json({
+      message: "Plan unassigned successfully"
+    });
+  } catch (error) {
+    console.error("Error unassigning plan:", error);
+    res.status(500).json({ message: "Failed to unassign plan", error: error.message });
+  }
+};
+
 // Create goal for athlete
 export const createGoal = async (req, res) => {
   try {
@@ -326,6 +421,43 @@ export const createGoal = async (req, res) => {
   } catch (error) {
     console.error("Error creating goal:", error);
     res.status(500).json({ message: "Failed to create goal", error: error.message });
+  }
+};
+
+// Delete goal
+export const deleteGoal = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { goalId } = req.params;
+
+    // Find the goal
+    const goal = await Goal.findByPk(goalId);
+
+    if (!goal) {
+      return res.status(404).json({ message: "Goal not found" });
+    }
+
+    // Verify coach-athlete relationship or that coach created the goal
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId: goal.athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship && goal.createdBy !== coachId) {
+      return res.status(403).json({ message: "You don't have permission to delete this goal" });
+    }
+
+    await goal.destroy();
+
+    res.status(200).json({
+      message: "Goal deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting goal:", error);
+    res.status(500).json({ message: "Failed to delete goal", error: error.message });
   }
 };
 
@@ -512,8 +644,8 @@ export const getAthleteProgress = async (req, res) => {
         }
       },
       attributes: ['performedDate'],
-      group: ['performedDate'],
-      order: [['performedDate', 'DESC']]
+      order: [['performedDate', 'DESC']],
+      limit: 30
     });
 
     let currentStreak = 0;
@@ -811,18 +943,63 @@ export const getCoachGoals = async (req, res) => {
       order: [['targetDate', 'ASC']]
     });
 
-    // Format goals for response
-    const formattedGoals = goals.map(g => ({
-      id: g.id,
-      athleteId: g.athleteId,
-      athleteName: `${g.athlete.fName} ${g.athlete.lName}`,
-      exerciseId: g.exerciseId,
-      exerciseName: g.exercise.name,
-      targetValue: g.targetValue,
-      targetUnit: g.targetUnit,
-      targetDate: g.targetDate,
-      status: g.status,
-      createdAt: g.createdAt
+    // Calculate progress and update status for each goal
+    const today = new Date().toISOString().split('T')[0];
+    
+    const formattedGoals = await Promise.all(goals.map(async (g) => {
+      // Get best performance for this exercise
+      let bestValue = 0;
+      const results = await ExerciseResult.findAll({
+        where: {
+          athleteId: g.athleteId,
+          exerciseId: g.exerciseId
+        }
+      });
+
+      if (results.length > 0) {
+        // Find best value based on target unit
+        results.forEach(r => {
+          let value = 0;
+          if (g.targetUnit === 'reps') value = r.reps || 0;
+          else if (g.targetUnit === 'weight_lbs' || g.targetUnit === 'weight_kg') value = r.weight || 0;
+          else if (g.targetUnit === 'time_seconds') value = r.duration || 0;
+          else if (g.targetUnit === 'distance_meters') value = r.distance || 0;
+          
+          if (value > bestValue) bestValue = value;
+        });
+      }
+
+      const progress = Math.min((bestValue / parseFloat(g.targetValue)) * 100, 100);
+      
+      // Update status based on progress and deadline
+      let status = g.status;
+      let completedDate = g.completedDate;
+      
+      if (status === 'active') {
+        if (progress >= 100) {
+          status = 'completed';
+          completedDate = today;
+          await g.update({ status: 'completed', completedDate: today });
+        } else if (g.targetDate < today) {
+          status = 'incomplete';
+          await g.update({ status: 'incomplete' });
+        }
+      }
+
+      return {
+        id: g.id,
+        athleteId: g.athleteId,
+        athleteName: `${g.athlete.fName} ${g.athlete.lName}`,
+        exerciseId: g.exerciseId,
+        exerciseName: g.exercise.name,
+        targetValue: g.targetValue,
+        targetUnit: g.targetUnit,
+        targetDate: g.targetDate,
+        status: status,
+        progress: Math.round(progress),
+        createdAt: g.createdAt,
+        completedDate: completedDate
+      };
     }));
 
     res.status(200).json({ data: formattedGoals });
@@ -918,6 +1095,124 @@ export const recordWorkoutResult = async (req, res) => {
   } catch (error) {
     console.error("Error recording workout result:", error);
     res.status(500).json({ message: "Failed to record workout result", error: error.message });
+  }
+};
+
+// Update training plan
+export const updatePlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { planId } = req.params;
+    const { name, description, duration, exercises } = req.body;
+
+    // Find the plan and verify ownership
+    const plan = await ExercisePlan.findOne({
+      where: {
+        id: planId,
+        createdBy: coachId
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found or you don't have permission to update it" });
+    }
+
+    // Update plan basic info
+    await plan.update({
+      name: name || plan.name,
+      description: description !== undefined ? description : plan.description,
+      duration: duration || plan.duration
+    });
+
+    // Update exercises if provided
+    if (exercises && Array.isArray(exercises)) {
+      // Delete existing plan exercises
+      await PlanExercise.destroy({
+        where: { planId: plan.id }
+      });
+
+      // Create new plan exercises
+      const planExercises = exercises.map((ex, index) => ({
+        planId: plan.id,
+        exerciseId: ex.exerciseId,
+        dayOfWeek: ex.dayOfWeek || 1,
+        sets: ex.sets,
+        reps: ex.reps,
+        duration: ex.duration,
+        restTime: ex.restTime || 60,
+        order: index + 1
+      }));
+
+      await PlanExercise.bulkCreate(planExercises);
+    }
+
+    // Fetch updated plan with exercises
+    const updatedPlan = await ExercisePlan.findOne({
+      where: { id: plan.id },
+      include: [{
+        model: PlanExercise,
+        as: 'planExercises',
+        include: [{
+          model: Exercise,
+          as: 'exercise',
+          attributes: ['id', 'name', 'category', 'equipment', 'muscleGroup']
+        }]
+      }]
+    });
+
+    res.status(200).json({
+      message: "Training plan updated successfully",
+      data: updatedPlan
+    });
+  } catch (error) {
+    console.error("Error updating plan:", error);
+    res.status(500).json({ message: "Failed to update plan", error: error.message });
+  }
+};
+
+// Delete training plan
+export const deletePlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { planId } = req.params;
+
+    // Find the plan and verify ownership
+    const plan = await ExercisePlan.findOne({
+      where: {
+        id: planId,
+        createdBy: coachId
+      }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found or you don't have permission to delete it" });
+    }
+
+    // Check if plan is assigned to any athletes
+    const assignments = await AthletePlan.count({
+      where: { planId: plan.id }
+    });
+
+    if (assignments > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete plan that is assigned to athletes. Please unassign it first." 
+      });
+    }
+
+    // Delete plan exercises first (cascade)
+    await PlanExercise.destroy({
+      where: { planId: plan.id }
+    });
+
+    // Delete the plan
+    await plan.destroy();
+
+    res.status(200).json({
+      message: "Training plan deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting plan:", error);
+    res.status(500).json({ message: "Failed to delete plan", error: error.message });
   }
 };
 
