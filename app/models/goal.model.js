@@ -38,9 +38,14 @@ const Goal = SequelizeInstance.define("goal", {
     comment: 'Target completion date',
   },
   status: {
-    type: Sequelize.ENUM('active', 'completed', 'cancelled'),
+    type: Sequelize.ENUM('active', 'completed', 'cancelled', 'incomplete'),
     allowNull: false,
     defaultValue: 'active',
+  },
+  completedDate: {
+    type: Sequelize.DATEONLY,
+    allowNull: true,
+    comment: 'Date when goal was completed',
   },
   createdBy: {
     type: Sequelize.INTEGER,

@@ -189,11 +189,15 @@ export const getTodayWorkout = async (req, res) => {
 export const getAthleteGoals = async (req, res) => {
   try {
     const athleteId = req.userId;
+    const today = new Date().toISOString().split('T')[0];
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
 
-    const goals = await Goal.findAll({
+    // Get all goals (active, completed within 1 week, incomplete within 1 week)
+    const allGoals = await Goal.findAll({
       where: {
-        athleteId,
-        status: 'active'
+        athleteId
       },
       include: [{
         model: Exercise,
@@ -207,22 +211,44 @@ export const getAthleteGoals = async (req, res) => {
       order: [['targetDate', 'ASC']]
     });
 
-    // Calculate progress for each goal
-    const goalsWithProgress = await Promise.all(goals.map(async (goal) => {
+    // Calculate progress and update status for each goal
+    const goalsWithProgress = await Promise.all(allGoals.map(async (goal) => {
       // Get best result for this exercise
-      const bestResult = await ExerciseResult.findOne({
+      const results = await ExerciseResult.findAll({
         where: {
           athleteId,
           exerciseId: goal.exerciseId
-        },
-        order: getOrderByUnit(goal.targetUnit),
-        limit: 1
+        }
       });
 
-      let progress = 0;
-      if (bestResult) {
-        const currentValue = getValueByUnit(bestResult, goal.targetUnit);
-        progress = Math.min(100, Math.round((currentValue / goal.targetValue) * 100));
+      let bestValue = 0;
+      if (results.length > 0) {
+        results.forEach(r => {
+          let value = 0;
+          if (goal.targetUnit === 'reps') value = r.reps || 0;
+          else if (goal.targetUnit === 'weight_lbs' || goal.targetUnit === 'weight_kg') value = r.weight || 0;
+          else if (goal.targetUnit === 'time_seconds') value = r.duration || 0;
+          else if (goal.targetUnit === 'distance_meters') value = r.distance || 0;
+          
+          if (value > bestValue) bestValue = value;
+        });
+      }
+
+      const progress = Math.min((bestValue / parseFloat(goal.targetValue)) * 100, 100);
+      
+      // Update status based on progress and deadline
+      let status = goal.status;
+      let completedDate = goal.completedDate;
+      
+      if (status === 'active') {
+        if (progress >= 100) {
+          status = 'completed';
+          completedDate = today;
+          await goal.update({ status: 'completed', completedDate: today });
+        } else if (goal.targetDate < today) {
+          status = 'incomplete';
+          await goal.update({ status: 'incomplete' });
+        }
       }
 
       return {
@@ -231,13 +257,34 @@ export const getAthleteGoals = async (req, res) => {
         targetValue: goal.targetValue,
         targetUnit: goal.targetUnit,
         targetDate: goal.targetDate,
+        completedDate: completedDate,
         exercise: goal.exercise,
         creator: goal.creator,
-        progress
+        status: status,
+        progress: Math.round(progress)
       };
     }));
 
-    res.status(200).json({ data: goalsWithProgress });
+    // Filter goals: active always shown, completed/incomplete only if within 1 week
+    const filteredGoals = goalsWithProgress.filter(g => {
+      if (g.status === 'active') return true;
+      if (g.status === 'completed' && g.completedDate && g.completedDate >= oneWeekAgoStr) return true;
+      if (g.status === 'incomplete' && g.targetDate >= oneWeekAgoStr) return true;
+      return false;
+    });
+
+    // Separate into categories
+    const activeGoals = filteredGoals.filter(g => g.status === 'active');
+    const completedGoals = filteredGoals.filter(g => g.status === 'completed');
+    const incompleteGoals = filteredGoals.filter(g => g.status === 'incomplete');
+
+    res.status(200).json({ 
+      data: {
+        active: activeGoals,
+        completed: completedGoals,
+        incomplete: incompleteGoals
+      }
+    });
   } catch (error) {
     console.error("Error fetching athlete goals:", error);
     res.status(500).json({ message: "Failed to fetch goals", error: error.message });
