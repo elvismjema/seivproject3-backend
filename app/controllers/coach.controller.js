@@ -346,13 +346,24 @@ export const unassignPlan = async (req, res) => {
     }
 
     // Find and delete the active assignment
-    const assignment = await AthletePlan.findOne({
+    // First try to find by coachId, then try without if not found
+    let assignment = await AthletePlan.findOne({
       where: {
         athleteId,
         planId,
         assignedBy: coachId
       }
     });
+
+    // If not found with coachId, try without (for legacy assignments)
+    if (!assignment) {
+      assignment = await AthletePlan.findOne({
+        where: {
+          athleteId,
+          planId
+        }
+      });
+    }
 
     if (!assignment) {
       return res.status(404).json({ message: "Plan assignment not found" });
