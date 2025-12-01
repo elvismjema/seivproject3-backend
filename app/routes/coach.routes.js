@@ -24,6 +24,7 @@ router.post("/plans/unassign", CoachController.unassignPlan);
 // Goal routes
 router.post("/goals", CoachController.createGoal);
 router.get("/goals", CoachController.getCoachGoals);
+router.delete("/goals/:goalId", CoachController.deleteGoal);
 
 // Results routes
 router.get("/results/recent", CoachController.getCoachRecentResults);
