@@ -25,4 +25,8 @@ router.post("/plans", AdminController.createStandardPlan);
 router.put("/plans/:planId", AdminController.updatePlan);
 router.delete("/plans/:planId", AdminController.deletePlan);
 
+// Coach management routes
+router.get("/coaches/:id/athletes", AdminController.getCoachAthletes);
+router.delete("/coaches/:id/athletes/:athleteId", AdminController.removeAthleteFromCoach);
+
 export default router;
