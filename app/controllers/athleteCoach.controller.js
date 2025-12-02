@@ -274,11 +274,104 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+// Admin: Get all athletes for a specific coach
+export const getCoachAthletes = async (req, res) => {
+  try {
+    const { coachId } = req.params;
+    
+    // Check if coach exists and is actually a coach
+    const coach = await User.findByPk(coachId);
+    if (!coach || coach.role !== 'coach') {
+      return res.status(404).json({ message: 'Coach not found' });
+    }
+
+    const athletes = await coach.getAthletes({
+      attributes: ['id', 'fName', 'lName', 'email'],
+      joinTableAttributes: []
+    });
+
+    res.status(200).json(athletes);
+  } catch (error) {
+    console.error('Error getting coach athletes:', error);
+    res.status(500).json({ message: 'Failed to get coach athletes', error: error.message });
+  }
+};
+
+// Admin: Remove an athlete from a coach
+export const adminRemoveAthleteFromCoach = async (req, res) => {
+  try {
+    const { coachId, athleteId } = req.params;
+
+    // Check if coach exists and is actually a coach
+    const coach = await User.findByPk(coachId);
+    if (!coach || coach.role !== 'coach') {
+      return res.status(404).json({ message: 'Coach not found' });
+    }
+
+    // Check if athlete exists and is actually an athlete
+    const athlete = await User.findByPk(athleteId);
+    if (!athlete || athlete.role !== 'athlete') {
+      return res.status(404).json({ message: 'Athlete not found' });
+    }
+
+    // Remove the relationship
+    await coach.removeAthlete(athleteId);
+    
+    res.status(200).json({ message: 'Athlete removed from coach successfully' });
+  } catch (error) {
+    console.error('Error removing athlete from coach:', error);
+    res.status(500).json({ message: 'Failed to remove athlete from coach', error: error.message });
+  }
+};
+
+// Admin: Assign an athlete to a coach
+export const adminAssignAthleteToCoach = async (req, res) => {
+  try {
+    const { coachId, athleteId } = req.params;
+
+    // Check if coach exists and is actually a coach
+    const coach = await User.findByPk(coachId);
+    if (!coach || coach.role !== 'coach') {
+      return res.status(404).json({ message: 'Coach not found' });
+    }
+
+    // Check if athlete exists and is actually an athlete
+    const athlete = await User.findByPk(athleteId);
+    if (!athlete || athlete.role !== 'athlete') {
+      return res.status(404).json({ message: 'Athlete not found' });
+    }
+
+    // Check if relationship already exists
+    const existingRelation = await AthleteCoach.findOne({
+      where: {
+        coachId,
+        athleteId,
+        endDate: null
+      }
+    });
+
+    if (existingRelation) {
+      return res.status(400).json({ message: 'Athlete is already assigned to this coach' });
+    }
+
+    // Create the relationship
+    await coach.addAthlete(athleteId, { through: { startDate: new Date() } });
+    
+    res.status(201).json({ message: 'Athlete assigned to coach successfully' });
+  } catch (error) {
+    console.error('Error assigning athlete to coach:', error);
+    res.status(500).json({ message: 'Failed to assign athlete to coach', error: error.message });
+  }
+};
+
 export default {
   requestConnection,
   getMyAthletes,
   getMyCoaches,
   endRelationship,
   updateUserRole,
-  getAllUsers
+  getAllUsers,
+  getCoachAthletes,
+  adminRemoveAthleteFromCoach,
+  adminAssignAthleteToCoach
 };

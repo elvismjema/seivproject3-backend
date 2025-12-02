@@ -32,5 +32,24 @@ const User = SequelizeInstance.define("user", {
   },
 });
 
+// Define associations
+User.associate = function(models) {
+  // A coach can have many athletes
+  User.belongsToMany(User, {
+    as: 'athletes',
+    through: 'athleteCoaches',
+    foreignKey: 'coachId',
+    otherKey: 'athleteId'
+  });
+
+  // An athlete can have many coaches
+  User.belongsToMany(User, {
+    as: 'coaches',
+    through: 'athleteCoaches',
+    foreignKey: 'athleteId',
+    otherKey: 'coachId'
+  });
+};
+
 export default User;
 

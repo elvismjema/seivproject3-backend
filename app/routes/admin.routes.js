@@ -1,5 +1,6 @@
 import express from "express";
 import * as AdminController from "../controllers/admin.controller.js";
+import * as AthleteCoachController from "../controllers/athleteCoach.controller.js";
 import authenticate from "../authorization/authorization.js";
 
 const router = express.Router();
@@ -26,7 +27,8 @@ router.put("/plans/:planId", AdminController.updatePlan);
 router.delete("/plans/:planId", AdminController.deletePlan);
 
 // Coach management routes
-router.get("/coaches/:id/athletes", AdminController.getCoachAthletes);
-router.delete("/coaches/:id/athletes/:athleteId", AdminController.removeAthleteFromCoach);
+router.get("/coaches/:coachId/athletes", AthleteCoachController.getCoachAthletes);
+router.post("/coaches/:coachId/athletes/:athleteId", AthleteCoachController.adminAssignAthleteToCoach);
+router.delete("/coaches/:coachId/athletes/:athleteId", AthleteCoachController.adminRemoveAthleteFromCoach);
 
 export default router;
