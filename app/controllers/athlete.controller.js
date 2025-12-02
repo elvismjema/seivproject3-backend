@@ -525,7 +525,7 @@ export const completeWorkout = async (req, res) => {
       
       const result = await ExerciseResult.create({
         athleteId,
-        exerciseId: exercise.id,
+        exerciseId: exercise.exerciseId || exercise.id,
         performedDate: new Date(),
         sets: actualSets,
         reps: exercise.reps,
