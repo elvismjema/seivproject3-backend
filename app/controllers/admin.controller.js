@@ -216,3 +216,65 @@ export const getDashboardStats = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch statistics", error: error.message });
   }
 };
+
+// Get all athletes for a specific coach
+export const getCoachAthletes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const coach = await User.findByPk(id, {
+      include: [{
+        model: User,
+        as: 'athletes',
+        through: { attributes: [] }, // Don't include join table attributes
+        attributes: ['id', 'fName', 'lName', 'email']
+      }]
+    });
+
+    if (!coach) {
+      return res.status(404).json({ message: 'Coach not found' });
+    }
+
+    res.status(200).json({ data: coach.athletes });
+  } catch (error) {
+    console.error('Error fetching coach athletes:', error);
+    res.status(500).json({ message: 'Failed to fetch coach athletes', error: error.message });
+  }
+};
+
+// Remove an athlete from a coach
+export const removeAthleteFromCoach = async (req, res) => {
+  try {
+    const { id, athleteId } = req.params;
+
+    // Check if coach exists
+    const coach = await User.findByPk(id);
+    if (!coach || coach.role !== 'coach') {
+      return res.status(404).json({ message: 'Coach not found' });
+    }
+
+    // Check if athlete exists
+    const athlete = await User.findByPk(athleteId);
+    if (!athlete || athlete.role !== 'athlete') {
+      return res.status(404).json({ message: 'Athlete not found' });
+    }
+
+    // Remove the association
+    await coach.removeAthlete(athleteId);
+    
+    res.status(200).json({ message: 'Athlete removed from coach successfully' });
+  } catch (error) {
+    console.error('Error removing athlete from coach:', error);
+    res.status(500).json({ message: 'Failed to remove athlete from coach', error: error.message });
+  }
+};
+
+export default {
+  getAllPlans,
+  updatePlan,
+  deletePlan,
+  createStandardPlan,
+  getDashboardStats,
+  getCoachAthletes,
+  removeAthleteFromCoach
+};
