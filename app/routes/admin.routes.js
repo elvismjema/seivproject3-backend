@@ -26,6 +26,7 @@ router.put("/plans/:planId", AdminController.updatePlan);
 router.delete("/plans/:planId", AdminController.deletePlan);
 
 // Coach management routes
+router.get("/coaches/athlete-counts", AdminController.getCoachAthleteCounts);
 router.get("/coaches/:id/athletes", AdminController.getCoachAthletes);
 router.delete("/coaches/:id/athletes/:athleteId", AdminController.removeAthleteFromCoach);
 

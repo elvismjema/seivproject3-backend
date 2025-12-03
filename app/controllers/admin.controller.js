@@ -222,23 +222,86 @@ export const getCoachAthletes = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const coach = await User.findByPk(id, {
+    // Use the same query as in the coach controller
+    const athletes = await db.athleteCoach.findAll({
+      where: {
+        coachId: id,
+        endDate: null // Active relationships only
+      },
       include: [{
-        model: User,
-        as: 'athletes',
-        through: { attributes: [] }, // Don't include join table attributes
+        model: db.user,
+        as: 'athlete',
         attributes: ['id', 'fName', 'lName', 'email']
       }]
     });
 
-    if (!coach) {
-      return res.status(404).json({ message: 'Coach not found' });
-    }
+    // Get current plan for each athlete
+    const athletesWithPlans = await Promise.all(athletes.map(async (ac) => {
+      const today = new Date().toISOString().split('T')[0];
 
-    res.status(200).json({ data: coach.athletes });
+      const activePlan = await db.athletePlan.findOne({
+        where: {
+          athleteId: ac.athlete.id,
+          startDate: {
+            [Op.lte]: today
+          },
+          [Op.or]: [
+            { endDate: null },
+            { endDate: { [Op.gte]: today } }
+          ]
+        },
+        include: [{
+          model: db.exercisePlan,
+          as: 'plan',
+          attributes: ['id', 'name']
+        }]
+      });
+
+      return {
+        id: ac.athlete.id,
+        fName: ac.athlete.fName,
+        lName: ac.athlete.lName,
+        name: `${ac.athlete.fName} ${ac.athlete.lName}`,
+        email: ac.athlete.email,
+        startDate: ac.startDate,
+        currentPlan: activePlan ? activePlan.plan?.name : null,
+        currentPlanId: activePlan ? activePlan.plan?.id : null
+      };
+    }));
+
+    res.status(200).json({ data: athletesWithPlans });
   } catch (error) {
     console.error('Error fetching coach athletes:', error);
     res.status(500).json({ message: 'Failed to fetch coach athletes', error: error.message });
+  }
+};
+
+// Get athlete counts for all coaches
+export const getCoachAthleteCounts = async (req, res) => {
+  try {
+    // Get all active coach-athlete relationships
+    const athleteCounts = await db.athleteCoach.findAll({
+      where: {
+        endDate: null
+      },
+      attributes: [
+        'coachId',
+        [db.sequelize.fn('COUNT', db.sequelize.col('athleteId')), 'athleteCount']
+      ],
+      group: ['coachId'],
+      raw: true
+    });
+
+    // Convert to a map of coachId -> athleteCount
+    const countsMap = {};
+    athleteCounts.forEach(item => {
+      countsMap[item.coachId] = parseInt(item.athleteCount, 10);
+    });
+
+    res.status(200).json(countsMap);
+  } catch (error) {
+    console.error('Error fetching coach athlete counts:', error);
+    res.status(500).json({ message: 'Failed to fetch coach athlete counts', error: error.message });
   }
 };
 
