@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "name": "tutorial-backend",
   "version": "1.0.0",
   "description": "Tutorial Node.js with Rest API",
