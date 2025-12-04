@@ -37,4 +37,11 @@ module.exports = function(app) {
     [authJwt.verifyToken],
     controller.getUnreadCount
   );
+
+  // Find or create a conversation with a coach (athlete only)
+  app.post(
+    "/api/messages/conversations",
+    [authJwt.verifyToken, authJwt.isAthlete],
+    controller.findOrCreateConversation
+  );
 };

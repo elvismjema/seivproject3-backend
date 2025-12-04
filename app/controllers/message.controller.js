@@ -1,6 +1,7 @@
 const db = require("../models");
 const Message = db.message;
 const User = db.user;
+const AthleteCoach = db.athleteCoach;
 
 // Create and Save a new Message
 exports.create = async (req, res) => {
@@ -169,6 +170,98 @@ exports.findAllConversations = async (req, res) => {
   } catch (err) {
     res.status(500).send({
       message: err.message || "Some error occurred while retrieving conversations."
+    });
+  }
+};
+
+// Find or create a conversation with a coach
+exports.findOrCreateConversation = async (req, res) => {
+  try {
+    const { coachId } = req.body;
+    const athleteId = req.userId;
+
+    if (!coachId) {
+      return res.status(400).send({
+        success: false,
+        message: "Coach ID is required"
+      });
+    }
+
+    // Check if the athlete is actually assigned to this coach
+    const coachAssignment = await AthleteCoach.findOne({
+      where: {
+        athleteId,
+        coachId,
+        endDate: null // Active relationship only
+      },
+      include: [
+        {
+          model: User,
+          as: 'coach',
+          attributes: ['id', 'fName', 'lName', 'email', 'profileImage']
+        },
+        {
+          model: User,
+          as: 'athlete',
+          attributes: ['id', 'fName', 'lName', 'email', 'profileImage']
+        }
+      ]
+    });
+
+    if (!coachAssignment) {
+      return res.status(403).send({
+        success: false,
+        message: "You are not assigned to this coach"
+      });
+    }
+
+    // Find existing messages between these users
+    const existingMessages = await Message.findAll({
+      where: {
+        [db.Sequelize.Op.or]: [
+          { senderId: athleteId, receiverId: coachId },
+          { senderId: coachId, receiverId: athleteId }
+        ]
+      },
+      order: [['createdAt', 'ASC']]
+    });
+
+    // Get the last message timestamp if any messages exist
+    const lastMessage = existingMessages.length > 0 
+      ? existingMessages[existingMessages.length - 1].createdAt 
+      : new Date();
+
+    // Mark unread messages as read
+    if (existingMessages.length > 0) {
+      await Message.update(
+        { isRead: true },
+        {
+          where: {
+            senderId: coachId,
+            receiverId: athleteId,
+            isRead: false
+          }
+        }
+      );
+    }
+
+    res.status(200).send({
+      success: true,
+      data: {
+        id: `conversation_${athleteId}_${coachId}`,
+        coach: coachAssignment.coach,
+        athlete: coachAssignment.athlete,
+        lastMessageAt: lastMessage,
+        messages: existingMessages,
+        isNew: existingMessages.length === 0
+      }
+    });
+
+  } catch (err) {
+    console.error("Error in findOrCreateConversation:", err);
+    res.status(500).send({
+      success: false,
+      message: err.message || "Error finding or creating conversation"
     });
   }
 };
