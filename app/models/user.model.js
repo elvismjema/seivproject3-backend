@@ -1,36 +1,79 @@
-import Sequelize from "sequelize";
-import SequelizeInstance from "../config/sequelizeInstance.js";
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define('User', {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    fName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    lName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true,
+      },
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: true, // Allow null for OAuth users
+    },
+    role: {
+      type: DataTypes.ENUM('admin', 'coach', 'athlete'),
+      allowNull: false,
+      defaultValue: 'athlete',
+    },
+    profileImage: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+    },
+    emailVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    resetPasswordToken: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    resetPasswordExpires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  }, {
+    tableName: 'users', // Explicitly set the table name
+    timestamps: true, // Enable timestamps (createdAt, updatedAt)
+    paranoid: true, // Enable soft deletes (adds deletedAt)
+  });
 
-const User = SequelizeInstance.define("user", {
+  // Class methods
+  User.associate = (models) => {
+    // Define associations here
+    User.hasMany(models.Session, {
+      foreignKey: 'userId',
+      as: 'sessions',
+      onDelete: 'CASCADE',
+    });
 
-  id: {
-    type: Sequelize.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  fName: {
-    type: Sequelize.STRING,
-    allowNull: false,
-  },
-  lName: {
-    type: Sequelize.STRING,
-    allowNull: false,
-  },
-  email: {
-    type: Sequelize.STRING,
-    allowNull: false,
-    unique: true,
-  },
-  role: {
-    type: Sequelize.ENUM('admin', 'coach', 'athlete'),
-    allowNull: false,
-    defaultValue: 'athlete',
-  },
-  profileImage: {
-    type: Sequelize.STRING(500),
-    allowNull: true,
-  },
-});
+    // Add other associations as needed
+  };
 
-export default User;
+  // Instance methods
+  User.prototype.toJSON = function() {
+    const values = Object.assign({}, this.get());
+    // Remove sensitive data
+    delete values.password;
+    delete values.resetPasswordToken;
+    delete values.resetPasswordExpires;
+    return values;
+  };
+
+  return User;
+};
 

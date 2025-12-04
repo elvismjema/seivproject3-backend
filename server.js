@@ -1,9 +1,9 @@
 
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import routes from './app/routes/index.js';
-import db from './app/models/index.js';
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const db = require('./app/models');
+const routes = require('./app/routes');
 
 // Create Express app
 const app = express();
@@ -61,22 +61,30 @@ const ENV = process.env.NODE_ENV || 'development';
 
 const startServer = async () => {
   try {
-    // Sync database
+    // Test the database connection
     await db.sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
+    console.log('✅ Database connection has been established successfully.');
     
-    // In development, you might want to use { alter: true } or { force: true }
-    // In production, you should use migrations instead
-    const syncOptions = ENV === 'development' ? { alter: true } : {};
+    // Sync all models
+    // force: true will drop the table if it already exists
+    // alter: true will update the table if it exists
+    const syncOptions = {
+      force: ENV === 'test', // Only force in test environment
+      alter: ENV === 'development' // Alter in development
+    };
+    
+    console.log('🔄 Syncing database...');
     await db.sequelize.sync(syncOptions);
+    console.log('✅ Database synced successfully');
     
-    // Start server
+    // Start the server
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT} in ${ENV} mode.`);
-      console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
+      console.log(`🚀 Server is running on port ${PORT} in ${ENV} mode.`);
+      console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
+      console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('❌ Unable to connect to the database:', error);
     process.exit(1);
   }
 };
@@ -86,4 +94,4 @@ if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
 
-export default app;
+module.exports = app; // for testing
