@@ -1,9 +1,9 @@
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const db = require('./app/models');
-const routes = require('./app/routes');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import db from './app/models/index.js';
+import routes from './app/routes/index.js';
 
 // Create Express app
 const app = express();
@@ -94,4 +94,4 @@ if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
 
-module.exports = app; // for testing
+export default app;

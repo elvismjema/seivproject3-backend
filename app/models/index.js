@@ -2,16 +2,16 @@ import { Sequelize } from 'sequelize';
 import sequelize from '../config/sequelizeInstance.js';
 
 // Import model functions
-const userModel = require('./user.model.js');
-const sessionModel = require('./session.model.js');
-const exerciseModel = require('./exercise.model.js');
-const exercisePlanModel = require('./exercisePlan.model.js');
-const planExerciseModel = require('./planExercise.model.js');
-const athleteCoachModel = require('./athleteCoach.model.js');
-const goalModel = require('./goal.model.js');
-const exerciseResultModel = require('./exerciseResult.model.js');
-const athletePlanModel = require('./athletePlan.model.js');
-const messageModel = require('./message.model.js');
+import userModel from './user.model.js';
+import sessionModel from './session.model.js';
+import exerciseModel from './exercise.model.js';
+import exercisePlanModel from './exercisePlan.model.js';
+import planExerciseModel from './planExercise.model.js';
+import athleteCoachModel from './athleteCoach.model.js';
+import goalModel from './goal.model.js';
+import exerciseResultModel from './exerciseResult.model.js';
+import athletePlanModel from './athletePlan.model.js';
+import messageModel from './message.model.js';
 
 // Initialize models
 const User = userModel(sequelize, Sequelize);
@@ -48,4 +48,4 @@ Object.keys(db).forEach(modelName => {
 });
 
 // Export the db object with all models
-module.exports = db;
+export default db;

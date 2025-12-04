@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "description": "Tutorial Node.js with Rest API",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "jest --",
-    "start": "node server.js",
-    "bundle": "mkdir deploy && cp -r app server.js package.json package-lock.json tracker-t2-backend.service .env deploy"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "start": "node --experimental-modules server.js",
+    "dev": "nodemon --experimental-modules server.js",
+    "bundle": "mkdir -p deploy && cp -r app server.js package.json package-lock.json tracker-t2-backend.service .env deploy"
   },
   "keywords": [
     "node.js",
