@@ -1,7 +1,7 @@
-const { authJwt } = require("../middleware");
-const controller = require("../controllers/message.controller");
+import { authJwt } from "../middleware/index.js";
+import * as controller from "../controllers/message.controller.js";
 
-module.exports = function(app) {
+const router = (app) => {
   app.use(function(req, res, next) {
     res.header(
       "Access-Control-Allow-Headers",
@@ -45,3 +45,5 @@ module.exports = function(app) {
     controller.findOrCreateConversation
   );
 };
+
+export default router;
