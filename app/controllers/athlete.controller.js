@@ -205,7 +205,7 @@ export const getAthleteGoals = async (req, res) => {
         attributes: ['id', 'name', 'category']
       }, {
         model: User,
-        as: 'creator',
+        as: "athlete",
         attributes: ['id', 'fName', 'lName']
       }],
       order: [['targetDate', 'ASC']]
@@ -259,7 +259,7 @@ export const getAthleteGoals = async (req, res) => {
         targetDate: goal.targetDate,
         completedDate: completedDate,
         exercise: goal.exercise,
-        creator: goal.creator,
+        creator: goal.athlete,
         status: status,
         progress: Math.round(progress)
       };
@@ -335,7 +335,7 @@ export const getAssignedPlans = async (req, res) => {
         as: 'plan',
         include: [{
           model: User,
-          as: 'creator',
+          as: "athlete",
           attributes: ['id', 'fName', 'lName']
         }]
       }, {
