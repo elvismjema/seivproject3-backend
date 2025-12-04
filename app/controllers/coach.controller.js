@@ -65,6 +65,8 @@ export const getCoachAthletes = async (req, res) => {
         profileImage: ac.athlete.profileImage,
         startDate: ac.startDate,
         currentPlan: activePlan?.plan?.name || null
+        currentPlan: activePlan ? activePlan.plan.name : null,
+        currentPlanId: activePlan ? activePlan.plan.id : null
       };
     }));
 
@@ -341,6 +343,64 @@ export const assignPlan = async (req, res) => {
   }
 };
 
+// Unassign plan from athlete
+export const unassignPlan = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { athleteId, planId } = req.body;
+
+    if (!athleteId || !planId) {
+      return res.status(400).json({ message: "Athlete ID and Plan ID are required" });
+    }
+
+    // Verify coach-athlete relationship
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship) {
+      return res.status(403).json({ message: "You don't have permission to manage plans for this athlete" });
+    }
+
+    // Find and delete the active assignment
+    // First try to find by coachId, then try without if not found
+    let assignment = await AthletePlan.findOne({
+      where: {
+        athleteId,
+        planId,
+        assignedBy: coachId
+      }
+    });
+
+    // If not found with coachId, try without (for legacy assignments)
+    if (!assignment) {
+      assignment = await AthletePlan.findOne({
+        where: {
+          athleteId,
+          planId
+        }
+      });
+    }
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Plan assignment not found" });
+    }
+
+    await assignment.destroy();
+
+    res.status(200).json({
+      message: "Plan unassigned successfully"
+    });
+  } catch (error) {
+    console.error("Error unassigning plan:", error);
+    res.status(500).json({ message: "Failed to unassign plan", error: error.message });
+  }
+};
+
 // Create goal for athlete
 export const createGoal = async (req, res) => {
   try {
@@ -382,6 +442,43 @@ export const createGoal = async (req, res) => {
   } catch (error) {
     console.error("Error creating goal:", error);
     res.status(500).json({ message: "Failed to create goal", error: error.message });
+  }
+};
+
+// Delete goal
+export const deleteGoal = async (req, res) => {
+  try {
+    const coachId = req.userId;
+    const { goalId } = req.params;
+
+    // Find the goal
+    const goal = await Goal.findByPk(goalId);
+
+    if (!goal) {
+      return res.status(404).json({ message: "Goal not found" });
+    }
+
+    // Verify coach-athlete relationship or that coach created the goal
+    const relationship = await AthleteCoach.findOne({
+      where: {
+        athleteId: goal.athleteId,
+        coachId,
+        endDate: null
+      }
+    });
+
+    if (!relationship && goal.createdBy !== coachId) {
+      return res.status(403).json({ message: "You don't have permission to delete this goal" });
+    }
+
+    await goal.destroy();
+
+    res.status(200).json({
+      message: "Goal deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting goal:", error);
+    res.status(500).json({ message: "Failed to delete goal", error: error.message });
   }
 };
 
@@ -873,18 +970,63 @@ export const getCoachGoals = async (req, res) => {
       order: [['targetDate', 'ASC']]
     });
 
-    // Format goals for response
-    const formattedGoals = goals.map(g => ({
-      id: g.id,
-      athleteId: g.athleteId,
-      athleteName: `${g.athlete.fName} ${g.athlete.lName}`,
-      exerciseId: g.exerciseId,
-      exerciseName: g.exercise.name,
-      targetValue: g.targetValue,
-      targetUnit: g.targetUnit,
-      targetDate: g.targetDate,
-      status: g.status,
-      createdAt: g.createdAt
+    // Calculate progress and update status for each goal
+    const today = new Date().toISOString().split('T')[0];
+    
+    const formattedGoals = await Promise.all(goals.map(async (g) => {
+      // Get best performance for this exercise
+      let bestValue = 0;
+      const results = await ExerciseResult.findAll({
+        where: {
+          athleteId: g.athleteId,
+          exerciseId: g.exerciseId
+        }
+      });
+
+      if (results.length > 0) {
+        // Find best value based on target unit
+        results.forEach(r => {
+          let value = 0;
+          if (g.targetUnit === 'reps') value = r.reps || 0;
+          else if (g.targetUnit === 'weight_lbs' || g.targetUnit === 'weight_kg') value = r.weight || 0;
+          else if (g.targetUnit === 'time_seconds') value = r.duration || 0;
+          else if (g.targetUnit === 'distance_meters') value = r.distance || 0;
+          
+          if (value > bestValue) bestValue = value;
+        });
+      }
+
+      const progress = Math.min((bestValue / parseFloat(g.targetValue)) * 100, 100);
+      
+      // Update status based on progress and deadline
+      let status = g.status;
+      let completedDate = g.completedDate;
+      
+      if (status === 'active') {
+        if (progress >= 100) {
+          status = 'completed';
+          completedDate = today;
+          await g.update({ status: 'completed', completedDate: today });
+        } else if (g.targetDate < today) {
+          status = 'incomplete';
+          await g.update({ status: 'incomplete' });
+        }
+      }
+
+      return {
+        id: g.id,
+        athleteId: g.athleteId,
+        athleteName: `${g.athlete.fName} ${g.athlete.lName}`,
+        exerciseId: g.exerciseId,
+        exerciseName: g.exercise.name,
+        targetValue: g.targetValue,
+        targetUnit: g.targetUnit,
+        targetDate: g.targetDate,
+        status: status,
+        progress: Math.round(progress),
+        createdAt: g.createdAt,
+        completedDate: completedDate
+      };
     }));
 
     res.status(200).json({ data: formattedGoals });
@@ -1074,7 +1216,7 @@ export const deletePlan = async (req, res) => {
     }
 
     // Check if plan is assigned to any athletes
-    const assignments = await PlanAssignment.count({
+    const assignments = await AthletePlan.count({
       where: { planId: plan.id }
     });
 
