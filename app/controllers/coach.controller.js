@@ -14,6 +14,12 @@ const { Op } = db.Sequelize;
 export const getCoachAthletes = async (req, res) => {
   try {
     const coachId = req.userId;
+    if (!coachId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Coach ID is required'
+      });
+    }
 
     const athletes = await AthleteCoach.findAll({
       where: {
@@ -23,12 +29,14 @@ export const getCoachAthletes = async (req, res) => {
       include: [{
         model: User,
         as: 'athlete',
-        attributes: ['id', 'fName', 'lName', 'email']
+        attributes: ['id', 'fName', 'lName', 'email', 'profileImage']
       }]
     });
 
     // Get current plan for each athlete
     const athletesWithPlans = await Promise.all(athletes.map(async (ac) => {
+      if (!ac.athlete) return null; // Skip if no athlete data
+
       const today = new Date().toISOString().split('T')[0];
 
       const activePlan = await AthletePlan.findOne({
@@ -51,18 +59,31 @@ export const getCoachAthletes = async (req, res) => {
 
       return {
         id: ac.athlete.id,
-        name: `${ac.athlete.fName} ${ac.athlete.lName}`,
+        fName: ac.athlete.fName,
+        lName: ac.athlete.lName,
         email: ac.athlete.email,
+        profileImage: ac.athlete.profileImage,
         startDate: ac.startDate,
+        currentPlan: activePlan?.plan?.name || null
         currentPlan: activePlan ? activePlan.plan.name : null,
         currentPlanId: activePlan ? activePlan.plan.id : null
       };
     }));
 
-    res.status(200).json({ data: athletesWithPlans });
+    // Filter out any null entries
+    const filteredAthletes = athletesWithPlans.filter(athlete => athlete !== null);
+
+    res.status(200).json({ 
+      success: true,
+      data: filteredAthletes 
+    });
   } catch (error) {
     console.error("Error fetching coach athletes:", error);
-    res.status(500).json({ message: "Failed to fetch athletes", error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to fetch athletes", 
+      error: error.message 
+    });
   }
 };
 

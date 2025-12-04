@@ -12,6 +12,7 @@ import AthleteCoach from "./athleteCoach.model.js";
 import Goal from "./goal.model.js";
 import ExerciseResult from "./exerciseResult.model.js";
 import AthletePlan from "./athletePlan.model.js";
+import Message from "./message.model.js";
 
 // Keep old models temporarily for migration
 import Tutorial from "./tutorial.model.js";
@@ -35,6 +36,7 @@ db.athletePlan = AthletePlan;
 // Keep old models temporarily
 db.tutorial = Tutorial;
 db.lesson = Lesson;
+db.message = Message;
 
 // ===== User Relationships =====
 // Session relationship
@@ -209,6 +211,30 @@ db.user.hasMany(db.athletePlan, {
 db.athletePlan.belongsTo(db.user, {
   as: "athlete",
   foreignKey: "athleteId"
+});
+
+// ===== Message Relationships =====
+// User sends messages
+db.user.hasMany(db.message, {
+  as: "sentMessages",
+  foreignKey: "senderId",
+  onDelete: "CASCADE"
+});
+
+db.user.hasMany(db.message, {
+  as: "receivedMessages",
+  foreignKey: "receiverId",
+  onDelete: "CASCADE"
+});
+
+db.message.belongsTo(db.user, {
+  as: "sender",
+  foreignKey: "senderId"
+});
+
+db.message.belongsTo(db.user, {
+  as: "receiver",
+  foreignKey: "receiverId"
 });
 
 // Coach assigns plans
