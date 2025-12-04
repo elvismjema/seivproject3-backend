@@ -1,9 +1,9 @@
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const db = require('./app/models');
-const routes = require('./app/routes');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import db from './app/models/index.js';
+import routes from './app/routes/index.js';
 
 // Create Express app
 const app = express();
@@ -38,7 +38,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api', routes);
 
 // Handle 404
-app.use((req, res, next) => {
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Route not found: ${req.originalUrl}`
@@ -66,8 +66,6 @@ const startServer = async () => {
     console.log('✅ Database connection has been established successfully.');
     
     // Sync all models
-    // force: true will drop the table if it already exists
-    // alter: true will update the table if it exists
     const syncOptions = {
       force: ENV === 'test', // Only force in test environment
       alter: ENV === 'development' // Alter in development
@@ -94,4 +92,4 @@ if (process.env.NODE_ENV !== 'test') {
   startServer();
 }
 
-module.exports = app; // for testing
+export default app;

@@ -4,10 +4,12 @@
   "description": "Tutorial Node.js with Rest API",
   "type": "module",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "jest --",
+    "test": "jest",
     "start": "node server.js",
-    "bundle": "mkdir deploy && cp -r app server.js package.json package-lock.json tracker-t2-backend.service .env deploy"
+    "dev": "nodemon server.js",
+    "bundle": "mkdir -p deploy && cp -r app server.js package.json package-lock.json tracker-t2-backend.service .env deploy"
   },
   "keywords": [
     "node.js",
