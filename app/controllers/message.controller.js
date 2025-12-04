@@ -1,10 +1,8 @@
-const db = require("../models");
-const Message = db.message;
-const User = db.user;
-const AthleteCoach = db.athleteCoach;
+import db from "../models/index.js";
+const { message: Message, user: User, athleteCoach: AthleteCoach } = db;
 
 // Create and Save a new Message
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   try {
     if (!req.body.content || !req.body.receiverId) {
       return res.status(400).send({
@@ -46,7 +44,7 @@ exports.create = async (req, res) => {
 };
 
 // Retrieve all messages between the current user and another user
-exports.findConversation = async (req, res) => {
+export const findConversation = async (req, res) => {
   try {
     const otherUserId = req.params.userId;
     const currentUserId = req.userId;
@@ -108,7 +106,7 @@ exports.findConversation = async (req, res) => {
 };
 
 // Get all conversations for the current user
-exports.findAllConversations = async (req, res) => {
+export const findAllConversations = async (req, res) => {
   try {
     const currentUserId = req.userId;
 
@@ -175,7 +173,7 @@ exports.findAllConversations = async (req, res) => {
 };
 
 // Find or create a conversation with a coach
-exports.findOrCreateConversation = async (req, res) => {
+export const findOrCreateConversation = async (req, res) => {
   try {
     const { coachId } = req.body;
     const athleteId = req.userId;
@@ -267,7 +265,7 @@ exports.findOrCreateConversation = async (req, res) => {
 };
 
 // Get unread message count
-exports.getUnreadCount = async (req, res) => {
+export const getUnreadCount = async (req, res) => {
   try {
     const count = await Message.count({
       where: {
