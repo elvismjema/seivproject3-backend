@@ -2,6 +2,7 @@
   "name": "tutorial-backend",
   "version": "1.0.0",
   "description": "Tutorial Node.js with Rest API",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "test": "jest --",
