@@ -1,5 +1,29 @@
 import db from "../models/index.js";
-const { message: Message, user: User, athleteCoach: AthleteCoach } = db;
+
+const Message = db.Message;
+const User = db.User;
+const AthleteCoach = db.AthleteCoach;
+
+// Helper function to format message response
+const formatMessage = (message) => ({
+  id: message.id,
+  content: message.content,
+  isRead: message.isRead,
+  createdAt: message.createdAt,
+  updatedAt: message.updatedAt,
+  sender: message.sender ? {
+    id: message.sender.id,
+    fName: message.sender.fName,
+    lName: message.sender.lName,
+    email: message.sender.email
+  } : null,
+  receiver: message.receiver ? {
+    id: message.receiver.id,
+    fName: message.receiver.fName,
+    lName: message.receiver.lName,
+    email: message.receiver.email
+  } : null
+});
 
 // Create and Save a new Message
 export const create = async (req, res) => {
@@ -10,17 +34,15 @@ export const create = async (req, res) => {
       });
     }
 
-    const message = {
+    const message = await Message.create({
       senderId: req.userId,
       receiverId: req.body.receiverId,
       content: req.body.content,
       isRead: false
-    };
+    });
 
-    const createdMessage = await Message.create(message);
-    
-    // Populate sender info
-    const messageWithSender = await Message.findByPk(createdMessage.id, {
+    // Populate sender and receiver info
+    const populatedMessage = await Message.findByPk(message.id, {
       include: [
         {
           model: User,
@@ -35,7 +57,10 @@ export const create = async (req, res) => {
       ]
     });
 
-    res.send(messageWithSender);
+    res.status(201).json({
+      success: true,
+      data: formatMessage(populatedMessage)
+    });
   } catch (err) {
     res.status(500).send({
       message: err.message || "Some error occurred while creating the message."
@@ -274,10 +299,23 @@ export const getUnreadCount = async (req, res) => {
       }
     });
     
-    res.send({ count });
-  } catch (err) {
-    res.status(500).send({
-      message: err.message || "Some error occurred while retrieving unread count."
+    res.status(200).json({
+      success: true,
+      count
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error retrieving unread message count."
     });
   }
+};
+
+// Export all controller methods
+export default {
+  create,
+  findConversation,
+  findAllConversations,
+  findOrCreateConversation,
+  getUnreadCount
 };

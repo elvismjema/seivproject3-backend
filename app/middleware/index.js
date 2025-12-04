@@ -1,9 +1,14 @@
+// Import all middleware modules
 import * as authJwt from "./authJwt.js";
-import * as verifySignup from "./authRole.js";
+import * as authRole from "./authRole.js";
 
-export { authJwt, verifySignup };
+// Re-export all middleware functions
+export { authJwt, authRole };
 
-export default {
-  authJwt,
-  verifySignup
+// Default export with all middleware
+const middleware = {
+  ...authJwt,
+  ...authRole
 };
+
+export default middleware;

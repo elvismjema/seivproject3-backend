@@ -1,8 +1,12 @@
 import { authJwt } from "../middleware/index.js";
 import * as controller from "../controllers/message.controller.js";
+import express from 'express';
 
-const router = (app) => {
-  app.use(function(req, res, next) {
+const router = express.Router();
+
+export default (app) => {
+  // CORS headers
+  app.use((req, res, next) => {
     res.header(
       "Access-Control-Allow-Headers",
       "x-access-token, Origin, Content-Type, Accept"
@@ -11,39 +15,40 @@ const router = (app) => {
   });
 
   // Create a new message
-  app.post(
-    "/api/messages",
+  router.post(
+    "/",
     [authJwt.verifyToken],
     controller.create
   );
 
   // Get conversation between current user and another user
-  app.get(
-    "/api/messages/conversation/:userId",
+  router.get(
+    "/conversation/:userId",
     [authJwt.verifyToken],
     controller.findConversation
   );
 
   // Get all conversations for the current user
-  app.get(
-    "/api/messages/conversations",
+  router.get(
+    "/conversations",
     [authJwt.verifyToken],
     controller.findAllConversations
   );
 
   // Get unread message count
-  app.get(
-    "/api/messages/unread-count",
+  router.get(
+    "/unread-count",
     [authJwt.verifyToken],
     controller.getUnreadCount
   );
 
   // Find or create a conversation with a coach (athlete only)
-  app.post(
-    "/api/messages/conversations",
+  router.post(
+    "/conversations",
     [authJwt.verifyToken, authJwt.isAthlete],
     controller.findOrCreateConversation
   );
-};
 
-export default router;
+  // Mount the router
+  app.use('/api/messages', router);
+};

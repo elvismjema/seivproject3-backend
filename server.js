@@ -1,46 +1,89 @@
 
-import routes from "./app/routes/index.js";
-import express from "express";
-import cors from "cors";
-import db from "./app/models/index.js";
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import routes from './app/routes/index.js';
+import db from './app/models/index.js';
 
-// Use alter: true to update existing tables with new fields
-// Change to sync({ force: false }) in production
-db.sequelize.sync({ alter: true });
-
+// Create Express app
 const app = express();
 
-// Also use the cors middleware as backup
-var corsOptions = {
+// CORS configuration
+const corsOptions = {
   origin: [
-    "http://localhost:8081",
-    "http://localhost:5173",
-    "https://project2.eaglesoftwareteam.com",
-    "http://project2.eaglesoftwareteam.com",
-    "https://project2.eaglesoftwareteam.com/seiv2025/p3/t2",
-    "http://project3.eaglesoftwareteam.com",
-    "https://project3.eaglesoftwareteam.com"
+    'http://localhost:8081',
+    'http://localhost:5173',
+    'https://project2.eaglesoftwareteam.com',
+    'http://project2.eaglesoftwareteam.com',
+    'https://project2.eaglesoftwareteam.com/seiv2025/p3/t2',
+    'http://project3.eaglesoftwareteam.com',
+    'https://project3.eaglesoftwareteam.com'
   ],
-  credentials: true
-}
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token']
+};
+
+// Middleware
 app.use(cors(corsOptions));
-
-
-// parse requests of content-type - application/json
 app.use(express.json());
-// parse requests of content-type - application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: true }));
-  
-// Load the routes from the routes folder
-app.use("/tracker-t2", routes); 
 
+// Simple route for health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
-// set port, listen for requests
-const PORT = process.env.PORT || 3122;
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}.`);
+// API routes
+app.use('/api', routes);
+
+// Handle 404
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.originalUrl}`
   });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err.message : {}
+  });
+});
+
+// Database sync and server start
+const PORT = process.env.PORT || 3122;
+const ENV = process.env.NODE_ENV || 'development';
+
+const startServer = async () => {
+  try {
+    // Sync database
+    await db.sequelize.authenticate();
+    console.log('Database connection has been established successfully.');
+    
+    // In development, you might want to use { alter: true } or { force: true }
+    // In production, you should use migrations instead
+    const syncOptions = ENV === 'development' ? { alter: true } : {};
+    await db.sequelize.sync(syncOptions);
+    
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT} in ${ENV} mode.`);
+      console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
+    });
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    process.exit(1);
+  }
+};
+
+// Only start the server if this file is run directly (not when imported for tests)
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
 }
 
 export default app;
