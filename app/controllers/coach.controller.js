@@ -1,4 +1,4 @@
-import db from "../models/index.js";
+const db = require("../models");
 
 const ExerciseResult = db.exerciseResult;
 const Goal = db.goal;
