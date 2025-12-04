@@ -5,9 +5,9 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "start": "node --experimental-modules server.js",
-    "dev": "nodemon --experimental-modules server.js",
+    "test": "jest",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
     "bundle": "mkdir -p deploy && cp -r app server.js package.json package-lock.json tracker-t2-backend.service .env deploy"
   },
   "keywords": [
