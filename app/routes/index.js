@@ -1,18 +1,18 @@
-const { Router } = require("express");
+import { Router } from "express";
 const router = Router();
 
 // Import routes
-const AuthRoutes = require("./auth.routes");
-const UserRoutes = require("./user.routes");
-const TutorialRoutes = require("./tutorial.routes");
-const LessonRoutes = require("./lesson.routes");
-const ExerciseRoutes = require("./exercise.routes");
-const ExerciseResultRoutes = require("./exerciseResult.routes");
-const AthleteCoachRoutes = require("./athleteCoach.routes");
-const AthleteRoutes = require("./athlete.routes");
-const CoachRoutes = require("./coach.routes");
-const AdminRoutes = require("./admin.routes");
-const MessageRoutes = require("./message.routes");
+import AuthRoutes from "./auth.routes.js";
+import UserRoutes from "./user.routes.js";
+import TutorialRoutes from "./tutorial.routes.js";
+import LessonRoutes from "./lesson.routes.js";
+import ExerciseRoutes from "./exercise.routes.js";
+import ExerciseResultRoutes from "./exerciseResult.routes.js";
+import AthleteCoachRoutes from "./athleteCoach.routes.js";
+import AthleteRoutes from "./athlete.routes.js";
+import CoachRoutes from "./coach.routes.js";
+import AdminRoutes from "./admin.routes.js";
+import MessageRoutes from "./message.routes.js";
 
 // Use routes
 router.use("/", AuthRoutes);
@@ -29,4 +29,4 @@ router.use("/coach", CoachRoutes);
 router.use("/admin", AdminRoutes);
 router.use("/api", MessageRoutes);
 
-module.exports = router;
+export default router;
