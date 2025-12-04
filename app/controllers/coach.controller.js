@@ -1,4 +1,4 @@
-import db from "../models/index.js";
+const db = require("../models");
 
 const ExerciseResult = db.exerciseResult;
 const Goal = db.goal;
@@ -11,7 +11,7 @@ const AthleteCoach = db.athleteCoach;
 const { Op } = db.Sequelize;
 
 // Get coach's athletes
-export const getCoachAthletes = async (req, res) => {
+exports.getCoachAthletes = async (req, res) => {
   try {
     const coachId = req.userId;
     if (!coachId) {
@@ -65,8 +65,6 @@ export const getCoachAthletes = async (req, res) => {
         profileImage: ac.athlete.profileImage,
         startDate: ac.startDate,
         currentPlan: activePlan?.plan?.name || null
-        currentPlan: activePlan ? activePlan.plan.name : null,
-        currentPlanId: activePlan ? activePlan.plan.id : null
       };
     }));
 
@@ -88,7 +86,7 @@ export const getCoachAthletes = async (req, res) => {
 };
 
 // Add athlete to coach
-export const addAthlete = async (req, res) => {
+exports.addAthlete = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, athleteEmail } = req.body;
@@ -182,7 +180,7 @@ export const addAthlete = async (req, res) => {
 };
 
 // Remove athlete from coach
-export const removeAthlete = async (req, res) => {
+exports.removeAthlete = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId } = req.params;
@@ -211,7 +209,7 @@ export const removeAthlete = async (req, res) => {
 };
 
 // Create training plan
-export const createPlan = async (req, res) => {
+exports.createPlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { name, description, duration, dayCheck, exercises } = req.body;
@@ -262,7 +260,7 @@ export const createPlan = async (req, res) => {
 };
 
 // Get coach's plans
-export const getCoachPlans = async (req, res) => {
+exports.getCoachPlans = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -290,7 +288,7 @@ export const getCoachPlans = async (req, res) => {
 };
 
 // Assign plan to athlete
-export const assignPlan = async (req, res) => {
+exports.assignPlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, planId, startDate, endDate } = req.body;
@@ -402,7 +400,7 @@ export const unassignPlan = async (req, res) => {
 };
 
 // Create goal for athlete
-export const createGoal = async (req, res) => {
+exports.createGoal = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, exerciseId, targetValue, targetUnit, targetDate } = req.body;
@@ -483,7 +481,7 @@ export const deleteGoal = async (req, res) => {
 };
 
 // Get recent athlete results for coach
-export const getCoachRecentResults = async (req, res) => {
+exports.getCoachRecentResults = async (req, res) => {
   try {
     const coachId = req.userId;
     const { limit = 20 } = req.query;
@@ -540,7 +538,7 @@ export const getCoachRecentResults = async (req, res) => {
 };
 
 // Get athlete's progress
-export const getAthleteProgress = async (req, res) => {
+exports.getAthleteProgress = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId } = req.params;
@@ -677,7 +675,7 @@ export const getAthleteProgress = async (req, res) => {
             id: athlete.id,
             name: `${athlete.fName} ${athlete.lName}`,
             email: athlete.email,
-            currentPlan: activePlan?.plan?.name || null
+            currentPlan: (activePlan && activePlan.plan && activePlan.plan.name) ? activePlan.plan.name : null,
           },
           workouts: workoutHistory.map(w => ({
             id: w.id,
@@ -756,7 +754,7 @@ export const getAthleteProgress = async (req, res) => {
 };
 
 // Get weekly results count
-export const getWeeklyResultsCount = async (req, res) => {
+exports.getWeeklyResultsCount = async (req, res) => {
   try {
     const coachId = req.userId;
     
@@ -800,7 +798,7 @@ export const getWeeklyResultsCount = async (req, res) => {
 };
 
 // Get exercises
-export const getExercises = async (req, res) => {
+exports.getExercises = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -822,7 +820,7 @@ export const getExercises = async (req, res) => {
 };
 
 // Create exercise
-export const createExercise = async (req, res) => {
+exports.createExercise = async (req, res) => {
   try {
     const coachId = req.userId;
     const { name, category, description } = req.body;
@@ -850,7 +848,7 @@ export const createExercise = async (req, res) => {
 };
 
 // Update exercise
-export const updateExercise = async (req, res) => {
+exports.updateExercise = async (req, res) => {
   try {
     const coachId = req.userId;
     const { exerciseId } = req.params;
@@ -884,7 +882,7 @@ export const updateExercise = async (req, res) => {
 };
 
 // Delete exercise
-export const deleteExercise = async (req, res) => {
+exports.deleteExercise = async (req, res) => {
   try {
     const coachId = req.userId;
     const { exerciseId } = req.params;
@@ -910,7 +908,7 @@ export const deleteExercise = async (req, res) => {
 };
 
 // Get custom exercises count
-export const getCustomExercisesCount = async (req, res) => {
+exports.getCustomExercisesCount = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -929,7 +927,7 @@ export const getCustomExercisesCount = async (req, res) => {
 };
 
 // Get coach's goals
-export const getCoachGoals = async (req, res) => {
+exports.getCoachGoals = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -1037,7 +1035,7 @@ export const getCoachGoals = async (req, res) => {
 };
 
 // Get active goals count
-export const getActiveGoalsCount = async (req, res) => {
+exports.getActiveGoalsCount = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -1073,7 +1071,7 @@ export const getActiveGoalsCount = async (req, res) => {
 };
 
 // Record workout result for athlete (coach submitting on behalf of athlete)
-export const recordWorkoutResult = async (req, res) => {
+exports.recordWorkoutResult = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, exerciseId, performedDate, sets, reps, weight, duration, distance, notes } = req.body;
@@ -1126,7 +1124,7 @@ export const recordWorkoutResult = async (req, res) => {
 };
 
 // Update training plan
-export const updatePlan = async (req, res) => {
+exports.updatePlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { planId } = req.params;
@@ -1198,7 +1196,7 @@ export const updatePlan = async (req, res) => {
 };
 
 // Delete training plan
-export const deletePlan = async (req, res) => {
+exports.deletePlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { planId } = req.params;
