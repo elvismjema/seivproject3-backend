@@ -1,4 +1,4 @@
-const db = require("../models");
+import db from "../models/index.js";
 
 const ExerciseResult = db.exerciseResult;
 const Goal = db.goal;
@@ -11,15 +11,9 @@ const AthleteCoach = db.athleteCoach;
 const { Op } = db.Sequelize;
 
 // Get coach's athletes
-exports.getCoachAthletes = async (req, res) => {
+export const getCoachAthletes = async (req, res) => {
   try {
     const coachId = req.userId;
-    if (!coachId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Coach ID is required'
-      });
-    }
 
     const athletes = await AthleteCoach.findAll({
       where: {
@@ -29,14 +23,12 @@ exports.getCoachAthletes = async (req, res) => {
       include: [{
         model: User,
         as: 'athlete',
-        attributes: ['id', 'fName', 'lName', 'email', 'profileImage']
+        attributes: ['id', 'fName', 'lName', 'email']
       }]
     });
 
     // Get current plan for each athlete
     const athletesWithPlans = await Promise.all(athletes.map(async (ac) => {
-      if (!ac.athlete) return null; // Skip if no athlete data
-
       const today = new Date().toISOString().split('T')[0];
 
       const activePlan = await AthletePlan.findOne({
@@ -59,34 +51,23 @@ exports.getCoachAthletes = async (req, res) => {
 
       return {
         id: ac.athlete.id,
-        fName: ac.athlete.fName,
-        lName: ac.athlete.lName,
+        name: `${ac.athlete.fName} ${ac.athlete.lName}`,
         email: ac.athlete.email,
-        profileImage: ac.athlete.profileImage,
         startDate: ac.startDate,
-        currentPlan: activePlan?.plan?.name || null
+        currentPlan: activePlan ? activePlan.plan.name : null,
+        currentPlanId: activePlan ? activePlan.plan.id : null
       };
     }));
 
-    // Filter out any null entries
-    const filteredAthletes = athletesWithPlans.filter(athlete => athlete !== null);
-
-    res.status(200).json({ 
-      success: true,
-      data: filteredAthletes 
-    });
+    res.status(200).json({ data: athletesWithPlans });
   } catch (error) {
     console.error("Error fetching coach athletes:", error);
-    res.status(500).json({ 
-      success: false,
-      message: "Failed to fetch athletes", 
-      error: error.message 
-    });
+    res.status(500).json({ message: "Failed to fetch athletes", error: error.message });
   }
 };
 
 // Add athlete to coach
-exports.addAthlete = async (req, res) => {
+export const addAthlete = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, athleteEmail } = req.body;
@@ -180,7 +161,7 @@ exports.addAthlete = async (req, res) => {
 };
 
 // Remove athlete from coach
-exports.removeAthlete = async (req, res) => {
+export const removeAthlete = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId } = req.params;
@@ -209,7 +190,7 @@ exports.removeAthlete = async (req, res) => {
 };
 
 // Create training plan
-exports.createPlan = async (req, res) => {
+export const createPlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { name, description, duration, dayCheck, exercises } = req.body;
@@ -260,7 +241,7 @@ exports.createPlan = async (req, res) => {
 };
 
 // Get coach's plans
-exports.getCoachPlans = async (req, res) => {
+export const getCoachPlans = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -288,7 +269,7 @@ exports.getCoachPlans = async (req, res) => {
 };
 
 // Assign plan to athlete
-exports.assignPlan = async (req, res) => {
+export const assignPlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, planId, startDate, endDate } = req.body;
@@ -400,7 +381,7 @@ export const unassignPlan = async (req, res) => {
 };
 
 // Create goal for athlete
-exports.createGoal = async (req, res) => {
+export const createGoal = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, exerciseId, targetValue, targetUnit, targetDate } = req.body;
@@ -481,7 +462,7 @@ export const deleteGoal = async (req, res) => {
 };
 
 // Get recent athlete results for coach
-exports.getCoachRecentResults = async (req, res) => {
+export const getCoachRecentResults = async (req, res) => {
   try {
     const coachId = req.userId;
     const { limit = 20 } = req.query;
@@ -538,7 +519,7 @@ exports.getCoachRecentResults = async (req, res) => {
 };
 
 // Get athlete's progress
-exports.getAthleteProgress = async (req, res) => {
+export const getAthleteProgress = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId } = req.params;
@@ -675,7 +656,7 @@ exports.getAthleteProgress = async (req, res) => {
             id: athlete.id,
             name: `${athlete.fName} ${athlete.lName}`,
             email: athlete.email,
-            currentPlan: (activePlan && activePlan.plan && activePlan.plan.name) ? activePlan.plan.name : null,
+            currentPlan: activePlan?.plan?.name || null
           },
           workouts: workoutHistory.map(w => ({
             id: w.id,
@@ -754,7 +735,7 @@ exports.getAthleteProgress = async (req, res) => {
 };
 
 // Get weekly results count
-exports.getWeeklyResultsCount = async (req, res) => {
+export const getWeeklyResultsCount = async (req, res) => {
   try {
     const coachId = req.userId;
     
@@ -798,7 +779,7 @@ exports.getWeeklyResultsCount = async (req, res) => {
 };
 
 // Get exercises
-exports.getExercises = async (req, res) => {
+export const getExercises = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -820,7 +801,7 @@ exports.getExercises = async (req, res) => {
 };
 
 // Create exercise
-exports.createExercise = async (req, res) => {
+export const createExercise = async (req, res) => {
   try {
     const coachId = req.userId;
     const { name, category, description } = req.body;
@@ -848,7 +829,7 @@ exports.createExercise = async (req, res) => {
 };
 
 // Update exercise
-exports.updateExercise = async (req, res) => {
+export const updateExercise = async (req, res) => {
   try {
     const coachId = req.userId;
     const { exerciseId } = req.params;
@@ -882,7 +863,7 @@ exports.updateExercise = async (req, res) => {
 };
 
 // Delete exercise
-exports.deleteExercise = async (req, res) => {
+export const deleteExercise = async (req, res) => {
   try {
     const coachId = req.userId;
     const { exerciseId } = req.params;
@@ -908,7 +889,7 @@ exports.deleteExercise = async (req, res) => {
 };
 
 // Get custom exercises count
-exports.getCustomExercisesCount = async (req, res) => {
+export const getCustomExercisesCount = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -927,7 +908,7 @@ exports.getCustomExercisesCount = async (req, res) => {
 };
 
 // Get coach's goals
-exports.getCoachGoals = async (req, res) => {
+export const getCoachGoals = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -1035,7 +1016,7 @@ exports.getCoachGoals = async (req, res) => {
 };
 
 // Get active goals count
-exports.getActiveGoalsCount = async (req, res) => {
+export const getActiveGoalsCount = async (req, res) => {
   try {
     const coachId = req.userId;
 
@@ -1071,7 +1052,7 @@ exports.getActiveGoalsCount = async (req, res) => {
 };
 
 // Record workout result for athlete (coach submitting on behalf of athlete)
-exports.recordWorkoutResult = async (req, res) => {
+export const recordWorkoutResult = async (req, res) => {
   try {
     const coachId = req.userId;
     const { athleteId, exerciseId, performedDate, sets, reps, weight, duration, distance, notes } = req.body;
@@ -1124,7 +1105,7 @@ exports.recordWorkoutResult = async (req, res) => {
 };
 
 // Update training plan
-exports.updatePlan = async (req, res) => {
+export const updatePlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { planId } = req.params;
@@ -1196,7 +1177,7 @@ exports.updatePlan = async (req, res) => {
 };
 
 // Delete training plan
-exports.deletePlan = async (req, res) => {
+export const deletePlan = async (req, res) => {
   try {
     const coachId = req.userId;
     const { planId } = req.params;
