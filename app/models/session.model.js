@@ -1,7 +1,5 @@
-import Sequelize from "sequelize";
-import SequelizeInstance from "../config/sequelizeInstance.js";
-
-const Session = SequelizeInstance.define("sessions", {
+export default (sequelize, Sequelize) => {
+  const Session = sequelize.define("sessions", {
     id: {
       type: Sequelize.INTEGER,
       autoIncrement: true,
@@ -20,5 +18,6 @@ const Session = SequelizeInstance.define("sessions", {
       allowNull: false,
     },
   });
-
-export default Session;
+  
+  return Session;
+};

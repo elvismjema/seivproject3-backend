@@ -1,7 +1,5 @@
-import Sequelize from "sequelize";
-  import SequelizeInstance from "../config/sequelizeInstance.js";
-
-  const PlanExercise = SequelizeInstance.define("planExercise", {
+export default (sequelize, Sequelize) => {
+  const PlanExercise = sequelize.define("planExercise", {
     id: {
       type: Sequelize.INTEGER,
       autoIncrement: true,
@@ -58,8 +56,9 @@ import Sequelize from "sequelize";
       comment: 'Exercise order in the day',
     },
   }, {
-    tableName: 'planExercises',  // This tells Sequelize to use 'planExercises' instead of 'plan_exercises'
-    timestamps: false             // Add this if your table doesn't have createdAt/updatedAt columns
+    tableName: 'planExercises',
+    timestamps: false
   });
-
-  export default PlanExercise;
+  
+  return PlanExercise;
+};
