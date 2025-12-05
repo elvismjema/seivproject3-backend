@@ -37,7 +37,18 @@ const db = {
   Goal,
   ExerciseResult,
   AthletePlan,
-  Message
+  Message,
+  // Lowercase aliases for backward compatibility
+  user: User,
+  session: Session,
+  exercise: Exercise,
+  exercisePlan: ExercisePlan,
+  planExercise: PlanExercise,
+  athleteCoach: AthleteCoach,
+  goal: Goal,
+  exerciseResult: ExerciseResult,
+  athletePlan: AthletePlan,
+  message: Message
 };
 
 // Run all model associations
