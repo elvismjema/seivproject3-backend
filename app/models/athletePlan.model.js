@@ -45,6 +45,21 @@ export default (sequelize, Sequelize) => {
       defaultValue: 'active',
     },
   });
+
+  AthletePlan.associate = function(models) {
+    AthletePlan.belongsTo(models.User, {
+      foreignKey: 'athleteId',
+      as: 'athlete'
+    });
+    AthletePlan.belongsTo(models.ExercisePlan, {
+      foreignKey: 'planId',
+      as: 'plan'
+    });
+    AthletePlan.belongsTo(models.User, {
+      foreignKey: 'assignedBy',
+      as: 'coach'
+    });
+  };
   
   return AthletePlan;
 };

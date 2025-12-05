@@ -55,6 +55,21 @@ export default (sequelize, Sequelize) => {
       comment: 'Who created the goal (coach or athlete)',
     },
   });
+
+  Goal.associate = function(models) {
+    Goal.belongsTo(models.User, {
+      foreignKey: 'athleteId',
+      as: 'athlete'
+    });
+    Goal.belongsTo(models.User, {
+      foreignKey: 'createdBy',
+      as: 'creator'
+    });
+    Goal.belongsTo(models.Exercise, {
+      foreignKey: 'exerciseId',
+      as: 'exercise'
+    });
+  };
   
   return Goal;
 };

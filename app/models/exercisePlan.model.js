@@ -45,6 +45,17 @@ export default (sequelize, Sequelize) => {
       comment: 'Bitmask for day openness',
     },
   });
+
+  ExercisePlan.associate = function(models) {
+    ExercisePlan.hasMany(models.PlanExercise, {
+      foreignKey: 'planId',
+      as: 'planExercises'
+    });
+    ExercisePlan.belongsTo(models.User, {
+      foreignKey: 'createdBy',
+      as: 'creator'
+    });
+  };
   
   return ExercisePlan;
 };

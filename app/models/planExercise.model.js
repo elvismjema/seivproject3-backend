@@ -59,6 +59,17 @@ export default (sequelize, Sequelize) => {
     tableName: 'planExercises',
     timestamps: false
   });
+
+  PlanExercise.associate = function(models) {
+    PlanExercise.belongsTo(models.ExercisePlan, {
+      foreignKey: 'planId',
+      as: 'exercisePlan'
+    });
+    PlanExercise.belongsTo(models.Exercise, {
+      foreignKey: 'exerciseId',
+      as: 'exercise'
+    });
+  };
   
   return PlanExercise;
 };

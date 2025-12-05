@@ -32,6 +32,17 @@ export default (sequelize, Sequelize) => {
       comment: 'NULL = active relationship',
     },
   });
+
+  AthleteCoach.associate = function(models) {
+    AthleteCoach.belongsTo(models.User, {
+      foreignKey: 'athleteId',
+      as: 'athlete'
+    });
+    AthleteCoach.belongsTo(models.User, {
+      foreignKey: 'coachId',
+      as: 'coach'
+    });
+  };
   
   return AthleteCoach;
 };

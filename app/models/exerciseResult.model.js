@@ -57,6 +57,17 @@ export default (sequelize, Sequelize) => {
       comment: 'Performance notes',
     },
   });
+
+  ExerciseResult.associate = function(models) {
+    ExerciseResult.belongsTo(models.User, {
+      foreignKey: 'athleteId',
+      as: 'athlete'
+    });
+    ExerciseResult.belongsTo(models.Exercise, {
+      foreignKey: 'exerciseId',
+      as: 'exercise'
+    });
+  };
   
   return ExerciseResult;
 };
