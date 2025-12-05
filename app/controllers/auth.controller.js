@@ -145,8 +145,9 @@ exports.login = async (req, res) => {
 
   // try to find session first
   console.log("Step 4: Looking for existing session");
+  let existingSession = null;
   try {
-    const existingSession = await Session.findOne({
+    existingSession = await Session.findOne({
       where: {
         email: email,
         token: { [Op.ne]: "" },
