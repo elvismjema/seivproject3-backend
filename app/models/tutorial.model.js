@@ -1,7 +1,5 @@
-import Sequelize from "sequelize";
-import SequelizeInstance from "../config/sequelizeInstance.js";
-
-const Tutorial = SequelizeInstance.define("tutorial", {
+export default (sequelize, Sequelize) => {
+  const Tutorial = sequelize.define("tutorial", {
     title: {
       type: Sequelize.STRING,
     },
@@ -12,5 +10,6 @@ const Tutorial = SequelizeInstance.define("tutorial", {
       type: Sequelize.BOOLEAN,
     },
   });
-   
-export default Tutorial;
+  
+  return Tutorial;
+};
