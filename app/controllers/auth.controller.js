@@ -145,9 +145,8 @@ exports.login = async (req, res) => {
 
   // try to find session first
   console.log("Step 4: Looking for existing session");
-  let existingSession = null;
   try {
-    existingSession = await Session.findOne({
+    const existingSession = await Session.findOne({
       where: {
         email: email,
         token: { [Op.ne]: "" },
@@ -170,9 +169,18 @@ exports.login = async (req, res) => {
         );
         session = {}; // Reset to create new session
       } else {
-        // Valid session found but need to regenerate token with correct format
-        console.log("Found existing session, regenerating token with user.id");
-        session = {}; // Force new token creation
+        // Valid session found, return user info
+        const userInfo = {
+          email: user.email,
+          fName: user.fName,
+          lName: user.lName,
+          userId: user.id,
+          role: user.role,
+          token: session.token,
+        };
+        console.log("found a session, don't need to make another one");
+        console.log(userInfo);
+        return res.send(userInfo);
       }
     }
   } catch (err) {
@@ -181,45 +189,49 @@ exports.login = async (req, res) => {
     });
   }
 
-  // Create or update session with new token
-  let token = jwt.sign({ id: user.id }, authconfig.secret, {
-    expiresIn: 86400,
-  });
-  let tempExpirationDate = new Date();
-  tempExpirationDate.setDate(tempExpirationDate.getDate() + 1);
-
-  if (existingSession && existingSession.id) {
-    // Update existing session with new token
-    console.log("Updating existing session with new token");
-    await Session.update(
-      {
-        token: token,
-        expirationDate: tempExpirationDate,
-      },
-      { where: { id: existingSession.id } }
-    );
-  } else {
-    // Create new session
-    console.log("Creating new session");
+  // Only create a new session if we haven't found an existing one
+  if (session.id === undefined) {
+    // create a new Session with an expiration date and save to database
+    let token = jwt.sign({ id: email }, authconfig.secret, {
+      expiresIn: 86400,
+    });
+    let tempExpirationDate = new Date();
+    tempExpirationDate.setDate(tempExpirationDate.getDate() + 1);
     const newSession = {
       token: token,
       email: email,
       userId: user.id,
       expirationDate: tempExpirationDate,
     };
-    await Session.create(newSession);
-  }
 
-  let userInfo = {
-    email: user.email,
-    fName: user.fName,
-    lName: user.lName,
-    userId: user.id,
-    role: user.role,
-    token: token,
-  };
-  console.log(userInfo);
-  return res.send(userInfo);
+    console.log("making a new session");
+    console.log(newSession);
+
+    await Session.create(newSession)
+      .then(() => {
+        let userInfo = {
+          email: user.email,
+          fName: user.fName,
+          lName: user.lName,
+          userId: user.id,
+          role: user.role,
+          token: token,
+          // refresh_token: user.refresh_token,
+          // expiration_date: user.expiration_date
+        };
+        console.log(userInfo);
+        return res.send(userInfo);
+      })
+      .catch((err) => {
+        console.error("ERROR creating session:", err);
+        return res.status(500).send({ message: err.message });
+      });
+  } else {
+    // We should have returned earlier if we had a valid session
+    console.log("WARNING: Session exists but wasn't handled properly");
+    console.log(session);
+    return res.status(500).send({ message: "Session handling error" });
+  }
 };
 
 exports.authorize = async (req, res) => {
