@@ -37,26 +37,27 @@ const db = {
   Goal,
   ExerciseResult,
   AthletePlan,
-  Message,
-  // Lowercase aliases for backward compatibility
-  user: User,
-  session: Session,
-  exercise: Exercise,
-  exercisePlan: ExercisePlan,
-  planExercise: PlanExercise,
-  athleteCoach: AthleteCoach,
-  goal: Goal,
-  exerciseResult: ExerciseResult,
-  athletePlan: AthletePlan,
-  message: Message
+  Message
 };
 
-// Run all model associations
+// Run all model associations (before adding lowercase aliases to avoid duplicates)
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
+
+// Add lowercase aliases for backward compatibility AFTER associations
+db.user = User;
+db.session = Session;
+db.exercise = Exercise;
+db.exercisePlan = ExercisePlan;
+db.planExercise = PlanExercise;
+db.athleteCoach = AthleteCoach;
+db.goal = Goal;
+db.exerciseResult = ExerciseResult;
+db.athletePlan = AthletePlan;
+db.message = Message;
 
 // Export the db object with all models
 export default db;
