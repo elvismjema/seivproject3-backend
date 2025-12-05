@@ -27,5 +27,9 @@ router.get("/exercises", AthleteController.getAvailableExercises);
 router.post("/exercises/record", AthleteController.recordExercise);
 router.post("/exercises/set", AthleteController.recordExerciseSet);
 router.post("/workouts/complete", AthleteController.completeWorkout);
+router.post("/workouts/bulk-complete", AthleteController.bulkCompleteWorkouts);
+
+// Progress route
+router.get("/progress", AthleteController.getAthleteOwnProgress);
 
 export default router;

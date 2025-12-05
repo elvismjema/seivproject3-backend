@@ -213,11 +213,14 @@ export const getAthleteGoals = async (req, res) => {
 
     // Calculate progress and update status for each goal
     const goalsWithProgress = await Promise.all(allGoals.map(async (goal) => {
-      // Get best result for this exercise
+      // Get best result for this exercise AFTER the goal was created
       const results = await ExerciseResult.findAll({
         where: {
           athleteId,
-          exerciseId: goal.exerciseId
+          exerciseId: goal.exerciseId,
+          performedDate: {
+            [Op.gte]: goal.createdAt ? new Date(goal.createdAt).toISOString().split('T')[0] : '1970-01-01'
+          }
         }
       });
 
@@ -337,6 +340,14 @@ export const getAssignedPlans = async (req, res) => {
           model: User,
           as: "athlete",
           attributes: ['id', 'fName', 'lName']
+        }, {
+          model: PlanExercise,
+          as: 'planExercises',
+          include: [{
+            model: Exercise,
+            as: 'exercise',
+            attributes: ['id', 'name', 'category']
+          }]
         }]
       }, {
         model: User,
@@ -550,5 +561,205 @@ export const completeWorkout = async (req, res) => {
   } catch (error) {
     console.error("Error completing workout:", error);
     res.status(500).json({ message: "Failed to complete workout", error: error.message });
+  }
+};
+
+// Bulk complete daily exercises (mark checkboxes as completed)
+export const bulkCompleteWorkouts = async (req, res) => {
+  try {
+    const athleteId = req.userId;
+    const { exercises } = req.body;
+
+    if (!exercises || exercises.length === 0) {
+      return res.status(400).json({ message: "No exercises provided" });
+    }
+
+    // Record results for each exercise with default values
+    const resultPromises = exercises.map(async exercise => {
+      const result = await ExerciseResult.create({
+        athleteId,
+        exerciseId: exercise.id,
+        performedDate: new Date().toISOString().split('T')[0],
+        sets: exercise.sets || 1,
+        reps: exercise.reps || 1,
+        weight: exercise.weight || null,
+        duration: exercise.duration || null,
+        notes: 'Completed from daily schedule'
+      });
+
+      return result;
+    });
+
+    const results = await Promise.all(resultPromises);
+
+    res.status(201).json({
+      message: "Exercises marked as completed successfully",
+      data: {
+        exercisesCompleted: results.length,
+        results: results
+      }
+    });
+  } catch (error) {
+    console.error("Error bulk completing workouts:", error);
+    res.status(500).json({ message: "Failed to mark exercises as completed", error: error.message });
+  }
+};
+
+// Get athlete's own progress (similar to coach view but for self)
+export const getAthleteOwnProgress = async (req, res) => {
+  try {
+    const athleteId = req.userId;
+    const { days = 30 } = req.query;
+
+    // Get current plan
+    const today = new Date().toISOString().split('T')[0];
+    const activePlan = await AthletePlan.findOne({
+      where: { 
+        athleteId,
+        startDate: { [Op.lte]: today },
+        [Op.or]: [
+          { endDate: null },
+          { endDate: { [Op.gte]: today } }
+        ]
+      },
+      include: [{
+        model: ExercisePlan,
+        as: 'plan',
+        attributes: ['id', 'name', 'description']
+      }],
+      order: [['startDate', 'DESC']]
+    });
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    // Get workout history
+    const workoutHistory = await ExerciseResult.findAll({
+      where: {
+        athleteId,
+        performedDate: { [Op.gte]: startDate }
+      },
+      include: [{
+        model: Exercise,
+        as: 'exercise',
+        attributes: ['id', 'name', 'category']
+      }],
+      order: [['performedDate', 'DESC']],
+      limit: 50
+    });
+
+    // Get all-time workout count
+    const totalWorkouts = await ExerciseResult.count({ where: { athleteId } });
+
+    // Get this week's workout count
+    const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+
+    const weeklyWorkouts = await ExerciseResult.count({
+      where: {
+        athleteId,
+        performedDate: { [Op.gte]: startOfWeek }
+      }
+    });
+
+    // Get active goals
+    const goals = await Goal.findAll({
+      where: { athleteId, status: 'active' },
+      include: [{
+        model: Exercise,
+        as: 'exercise',
+        attributes: ['id', 'name']
+      }],
+      order: [['targetDate', 'ASC']]
+    });
+
+    // Calculate progress for each goal
+    const goalsWithProgress = await Promise.all(goals.map(async (goal) => {
+      const results = await ExerciseResult.findAll({
+        where: {
+          athleteId,
+          exerciseId: goal.exerciseId,
+          performedDate: {
+            [Op.gte]: goal.createdAt ? new Date(goal.createdAt).toISOString().split('T')[0] : '1970-01-01'
+          }
+        }
+      });
+
+      let bestValue = 0;
+      if (results.length > 0) {
+        results.forEach(r => {
+          let value = 0;
+          if (goal.targetUnit === 'reps') value = r.reps || 0;
+          else if (goal.targetUnit === 'weight_lbs' || goal.targetUnit === 'weight_kg') value = r.weight || 0;
+          else if (goal.targetUnit === 'time_seconds') value = r.duration || 0;
+          else if (goal.targetUnit === 'distance_meters') value = r.distance || 0;
+          
+          if (value > bestValue) bestValue = value;
+        });
+      }
+
+      const progress = Math.min((bestValue / parseFloat(goal.targetValue)) * 100, 100);
+
+      return {
+        id: goal.id,
+        exercise: goal.exercise,
+        targetValue: goal.targetValue,
+        targetUnit: goal.targetUnit,
+        targetDate: goal.targetDate,
+        status: goal.status,
+        progress: Math.round(progress)
+      };
+    }));
+
+    // Calculate current streak
+    const recentDays = await ExerciseResult.findAll({
+      where: {
+        athleteId,
+        performedDate: { [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+      },
+      attributes: ['performedDate'],
+      order: [['performedDate', 'DESC']],
+      limit: 30
+    });
+
+    let currentStreak = 0;
+    if (recentDays.length > 0) {
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+      
+      for (let i = 0; i < recentDays.length; i++) {
+        const workoutDate = new Date(recentDays[i].performedDate);
+        workoutDate.setHours(0, 0, 0, 0);
+        
+        const expectedDate = new Date(todayDate);
+        expectedDate.setDate(expectedDate.getDate() - i);
+        expectedDate.setHours(0, 0, 0, 0);
+        
+        if (workoutDate.getTime() === expectedDate.getTime()) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    res.status(200).json({
+      data: {
+        activePlan: activePlan ? {
+          plan: activePlan.plan,
+          startDate: activePlan.startDate,
+          endDate: activePlan.endDate
+        } : null,
+        workoutHistory,
+        totalWorkouts,
+        weeklyWorkouts,
+        currentStreak,
+        goals: goalsWithProgress
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching athlete progress:", error);
+    res.status(500).json({ message: "Failed to fetch progress", error: error.message });
   }
 };
