@@ -192,7 +192,7 @@ exports.login = async (req, res) => {
   // Only create a new session if we haven't found an existing one
   if (session.id === undefined) {
     // create a new Session with an expiration date and save to database
-    let token = jwt.sign({ id: email }, authconfig.secret, {
+    let token = jwt.sign({ id: user.id }, authconfig.secret, {
       expiresIn: 86400,
     });
     let tempExpirationDate = new Date();
