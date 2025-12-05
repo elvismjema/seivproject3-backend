@@ -93,16 +93,14 @@ export const getWeeklyStats = async (req, res) => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    // Count workouts this week
+    // Count workouts this week (total exercise results recorded)
     const workoutsThisWeek = await ExerciseResult.count({
       where: {
         athleteId,
         performedDate: {
           [Op.gte]: oneWeekAgo
         }
-      },
-      distinct: true,
-      col: 'performedDate'
+      }
     });
 
     // Get personal records (simplified - would need more complex logic for real PRs)
