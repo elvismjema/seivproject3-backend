@@ -135,6 +135,7 @@ export const getTodayWorkout = async (req, res) => {
   try {
     const athleteId = req.userId;
     const today = new Date().toISOString().split('T')[0];
+    const dayOfWeek = new Date().getDay() === 0 ? 7 : new Date().getDay(); // 1=Monday, 7=Sunday
 
     // Find active plans for this athlete
     const activePlans = await AthletePlan.findAll({
@@ -154,6 +155,10 @@ export const getTodayWorkout = async (req, res) => {
         include: [{
           model: PlanExercise,
           as: 'planExercises',
+          where: {
+            dayOfWeek: dayOfWeek
+          },
+          required: false,
           include: [{
             model: Exercise,
             as: 'exercise'
@@ -163,20 +168,33 @@ export const getTodayWorkout = async (req, res) => {
       limit: 1
     });
 
-    if (activePlans.length === 0) {
-      return res.status(200).json({ data: null });
+    if (activePlans.length === 0 || !activePlans[0].plan.planExercises || activePlans[0].plan.planExercises.length === 0) {
+      return res.status(200).json({ data: [] });
     }
 
-    // Return exercises from the plan
-    const planExercises = activePlans[0].plan.planExercises.map(pe => ({
-      id: pe.exercise.id,
-      name: pe.exercise.name,
-      sets: pe.sets,
-      reps: pe.reps,
-      weight: pe.weight,
-      duration: pe.duration,
-      completed: false
-    }));
+    // Get completed exercise IDs for today
+    const completedToday = await ExerciseResult.findAll({
+      where: {
+        athleteId,
+        performedDate: today
+      },
+      attributes: ['exerciseId']
+    });
+
+    const completedExerciseIds = completedToday.map(r => r.exerciseId);
+
+    // Return exercises from the plan, excluding already completed ones
+    const planExercises = activePlans[0].plan.planExercises
+      .filter(pe => pe.exercise && !completedExerciseIds.includes(pe.exercise.id))
+      .map(pe => ({
+        id: pe.exercise.id,
+        name: pe.exercise.name,
+        sets: pe.sets,
+        reps: pe.reps,
+        weight: pe.weight,
+        duration: pe.duration,
+        completed: false
+      }));
 
     res.status(200).json({ data: planExercises });
   } catch (error) {
@@ -337,10 +355,6 @@ export const getAssignedPlans = async (req, res) => {
         model: ExercisePlan,
         as: 'plan',
         include: [{
-          model: User,
-          as: "athlete",
-          attributes: ['id', 'fName', 'lName']
-        }, {
           model: PlanExercise,
           as: 'planExercises',
           include: [{
@@ -351,7 +365,7 @@ export const getAssignedPlans = async (req, res) => {
         }]
       }, {
         model: User,
-        as: 'assignedByUser',
+        as: 'coach',
         attributes: ['id', 'fName', 'lName']
       }],
       order: [['startDate', 'DESC']]

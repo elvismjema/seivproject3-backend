@@ -40,6 +40,13 @@ export default (sequelize, Sequelize) => {
       },
     },
   });
+
+  Exercise.associate = function(models) {
+    Exercise.belongsTo(models.User, {
+      foreignKey: 'createdBy',
+      as: 'creator'
+    });
+  };
   
   return Exercise;
 };
